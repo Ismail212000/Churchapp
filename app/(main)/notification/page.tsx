@@ -1,5 +1,7 @@
 import React from "react";
 
 export default function notification() {
-  return <div>notification</div>;
+  return (
+    <div className="flex justify-center items-center mt-20">notification</div>
+  );
 }
