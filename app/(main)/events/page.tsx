@@ -1,5 +1,5 @@
 import React from "react";
 
 export default function events() {
-  return <div>events</div>;
+  return <div className="flex justify-center items-center mt-20">events</div>;
 }
