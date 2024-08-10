@@ -67,3 +67,7 @@
     @apply bg-background text-foreground;
   }
 }
+.select-trigger {
+  position: relative;
+  z-index: 10;
+}

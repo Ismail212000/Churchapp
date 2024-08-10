@@ -16,8 +16,8 @@ import {
   CardContent,
   CardFooter,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
+import { saveEvent, fetchAllEvents } from "@/components/actions/events"; // Ensure these functions are implemented
 
 interface AgendaItem {
   title: string;
@@ -40,6 +40,8 @@ export default function Events() {
   const [events, setEvents] = useState<Event[]>([]);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [currentTab, setCurrentTab] = useState("current"); // Default to current events
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState<Event>({
     id: 0,
     title: "",
@@ -67,45 +69,64 @@ export default function Events() {
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const defaultNewEvent = {
-      id: Date.now(),
-      title: "",
-      date: "",
-      description: "",
-      agenda: [] as AgendaItem[], // Initializing as an empty array
-      isPaidEvent: false,
-      banner: "",
-      repeat: false,
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const eventsData = await fetchAllEvents();
+        setEvents(eventsData);
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        setError("Failed to fetch events.");
+      }
     };
 
-    const eventToSave = { ...defaultNewEvent, ...newEvent };
+    fetchEvents();
+  }, []);
+  
 
-    if (editingEvent) {
-      setEvents((prev) =>
-        prev.map((event) =>
-          event.id === editingEvent.id ? eventToSave : event
-        )
-      );
-    } else {
-      setEvents((prev) => [...prev, eventToSave]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const eventToSave = {
+        ...newEvent,
+        id: editingEvent ? editingEvent.id : Date.now(),
+      };
+
+      if (editingEvent) {
+        await saveEvent(eventToSave, editingEvent.id.toString());
+      } else {
+        await saveEvent(eventToSave);
+      }
+
+      setEvents((prev) => {
+        return editingEvent
+          ? prev.map((event) =>
+              event.id === editingEvent.id ? eventToSave : event
+            )
+          : [...prev, eventToSave];
+      });
+
+      setNewEvent({
+        id: 0,
+        title: "",
+        date: "",
+        description: "",
+        agenda: [{ title: "", time: "" }],
+        isPaidEvent: false,
+        banner: null,
+        repeat: false,
+      });
+      setShowForm(false);
+      setEditingEvent(null);
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred while saving the event.");
+    } finally {
+      setLoading(false);
     }
-
-    setNewEvent({
-      id: 0,
-      title: "",
-      date: "",
-      description: "",
-      agenda: [] as AgendaItem[], // Resetting to an empty array
-      isPaidEvent: false,
-      banner: "",
-      repeat: false,
-    });
-
-    setShowForm(false);
-    setEditingEvent(null);
   };
 
   const handleEdit = (event: Event) => {
@@ -162,6 +183,36 @@ export default function Events() {
     }
   };
 
+  const isCurrentEvent = (eventDate: string) => {
+    const today = new Date();
+    const eventDateObj = new Date(eventDate);
+    return eventDateObj.toDateString() === today.toDateString();
+  };
+
+  const isUpcomingEvent = (eventDate: string) => {
+    const today = new Date();
+    const eventDateObj = new Date(eventDate);
+    return eventDateObj > today;
+  };
+
+  const isPreviousEvent = (eventDate: string) => {
+    const today = new Date();
+    const eventDateObj = new Date(eventDate);
+    return eventDateObj < today;
+  };
+
+  const filterEvents = (events: Event[], currentTab: string) => {
+    switch (currentTab) {
+      case "current":
+        return events.filter((event) => isCurrentEvent(event.date));
+      case "upcoming":
+        return events.filter((event) => isUpcomingEvent(event.date));
+      case "previous":
+        return events.filter((event) => isPreviousEvent(event.date));
+      default:
+        return events;
+    }
+  };
   return (
     <>
       {/* event header */}
@@ -240,46 +291,46 @@ export default function Events() {
         </div>
         {/* Event cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 justify-items-center">
-          {events.map((event) => (
-            <Card key={event.id} className="w-full max-w-sm">
-              {event.banner && (
-                <img
-                  src={event.banner}
-                  alt={event.title}
-                  className="w-full h-40 object-cover rounded-t-lg"
-                />
-              )}
-              <CardHeader>
-                <CardTitle>{event.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>{event.description}</p>
-                {event.isPaidEvent && (
-                  <p className="mt-2 text-green-600">Paid Event</p>
-                )}
-                {event.repeat && (
-                  <p className="mt-2 text-blue-600">Repeating Event</p>
-                )}
-              </CardContent>
-              <CardFooter className="justify-center gap-2">
-                <Button
-                  onClick={() => handleEdit(event)}
-                  size="sm"
-                  variant="outline"
-                  className="bg-[#047857] text-white"
-                >
-                  <FiEdit className="mr-2" />
-                  Edit
-                </Button>
-                <Button
-                  onClick={() => handleDelete(event.id)}
-                  size="sm"
-                  variant="outline"
-                >
-                  <FiTrash2 className="text-[#047857]" />
-                </Button>
-              </CardFooter>
-            </Card>
+        {filterEvents(events, currentTab).map((event) => (
+           <Card key={event.id} className="w-full max-w-sm">
+           {event.banner && (
+             <img
+               src={event.banner}
+               alt={event.title}
+               className="w-full h-40 object-cover rounded-t-lg"
+             />
+           )}
+           <CardHeader>
+             <CardTitle>{event.title}</CardTitle>
+           </CardHeader>
+           <CardContent>
+             <p>{event.description}</p>
+             {event.isPaidEvent && (
+               <p className="mt-2 text-green-600">Paid Event</p>
+             )}
+             {event.repeat && (
+               <p className="mt-2 text-blue-600">Repeating Event</p>
+             )}
+           </CardContent>
+           <CardFooter className="justify-center gap-2">
+           <Button
+      onClick={() => handleEdit(event)}
+      size="sm"
+      variant="outline"
+      className="bg-[#047857] text-white"
+    >
+               <FiEdit className="mr-2" />
+               Edit
+             </Button>
+             <Button
+               onClick={() => handleDelete(event.id)}
+               size="sm"
+               variant="outline"
+             >
+               <FiTrash2 className="text-[#047857]" />
+             </Button>
+           </CardFooter>
+         </Card>
           ))}
         </div>
 
