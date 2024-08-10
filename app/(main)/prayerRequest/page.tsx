@@ -415,11 +415,11 @@ export default function PrayerRequest() {
               </div>
             )}
           </DialogDescription>
-          <DialogFooter>
+          {/* <DialogFooter>
             <DialogClose className="px-4 py-2 bg-blue-500 text-white rounded-lg">
               Close
             </DialogClose>
-          </DialogFooter>
+          </DialogFooter> */}
         </DialogContent>
       </Dialog>
 
