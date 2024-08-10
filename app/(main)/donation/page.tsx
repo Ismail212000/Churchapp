@@ -2,7 +2,15 @@
 import DataTable from "@/components/datatable/table";
 import { IoMdSearch } from "react-icons/io";
 import { IoFilterSharp } from "react-icons/io5";
+import { BsThreeDotsVertical } from "react-icons/bs";
 import { MdOutlineArrowCircleDown } from "react-icons/md";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@nextui-org/react";
+
 import { IoPrintSharp } from "react-icons/io5";
 // import { Button } from "@/components/ui/button"
 import {
@@ -16,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 interface DonationData {
   DonationId: string;
@@ -30,6 +38,10 @@ const Donation: React.FC = () => {
   const [selectedDonation, setSelectedDonation] = useState<DonationData | null>(
     null
   );
+  console.log("ss:", selectedDonation);
+  const [searchValue, setSearchValue] = useState("");
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const donationData = [
     {
       DonationId: "#12345128",
@@ -41,7 +53,7 @@ const Donation: React.FC = () => {
     },
     {
       DonationId: "#12345128",
-      DonorName: "Esther Eden",
+      DonorName: "Eden",
       DonorType: "Charity",
       Address: "2972 WestheimerRd. Santa Ana",
       Contact: "9876543210",
@@ -49,14 +61,33 @@ const Donation: React.FC = () => {
     },
     {
       DonationId: "#12345128",
-      DonorName: "Esther Eden",
+      DonorName: "john",
       DonorType: "Charity",
       Address: "2972 WestheimerRd. Santa Ana",
       Contact: "9876543210",
       amount: 100.0,
     },
   ];
+  // const searchInputRef = useRef<HTMLInputElement>(null);
+  // useEffect(() => {
+  //   if (searchInputRef.current) {
+  //     searchInputRef.current.focus();
+  //   }
+  // }, []);
 
+  const [openModal, setOpenModal] = useState(false);
+  const filterSearchData = useMemo(() => {
+    return donationData.filter((eachDonation) => {
+      const searchLower = searchValue.toLowerCase();
+      return (
+        eachDonation.DonationId.toLowerCase().includes(searchLower) ||
+        eachDonation.DonorName.toLowerCase().includes(searchLower) ||
+        eachDonation.DonorType.toLowerCase().includes(searchLower) ||
+        eachDonation.Address.toLowerCase().includes(searchLower) ||
+        eachDonation.Contact.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [searchValue, donationData]);
   const Tableaction: React.FC = () => {
     return (
       <div className="w-full flex items-center gap-2">
@@ -65,6 +96,8 @@ const Donation: React.FC = () => {
           <input
             type="search"
             placeholder="Search for invoice"
+            onChange={(e) => setSearchValue(e.target.value)}
+            value={searchValue}
             className="bg-transparent w-full outline-none h-full"
           />
         </div>
@@ -85,7 +118,8 @@ const Donation: React.FC = () => {
   };
 
   const handleViewClick = (row: any) => {
-    setSelectedDonation(row);
+    setSelectedDonation(row.original);
+    setOpenModal(true);
   };
 
   const columnsWithCheckboxAndAction = [
@@ -175,98 +209,31 @@ const Donation: React.FC = () => {
       id: "actions",
       enableHiding: false,
       cell: ({ row }: { row: any }) => (
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-24 text-[12px] rounded-full"
-              // onClick={() => handleViewClick(row)}
-            >
-              View
+        <Button
+          variant="outline"
+          className="w-24 text-[12px] rounded-full"
+          onClick={() => handleViewClick(row)}
+        >
+          View
+        </Button>
+      ),
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      header: "Actions",
+      cell: ({ row }: { row: any }) => (
+        <Dropdown>
+          <DropdownTrigger>
+            <Button className=" border-none bg-transparent hover:bg-transparent">
+              <BsThreeDotsVertical className="text-[#000]" />
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[525px]">
-            <DialogHeader className="text-[23px] font-sans font-semibold">
-              Donation
-            </DialogHeader>
-            <hr />
-            {selectedDonation && (
-              <div className="w-full mx-auto p-6 bg-white rounded-lg">
-                <div className="flex flex-col justify-start gap-4">
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">Donation ID:</p>
-                    <p className="text-lg font-medium">
-                      {selectedDonation.DonationId}
-                    </p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">Full Name:</p>
-                    <p className="text-lg font-medium">
-                      {selectedDonation.DonorName}
-                    </p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">
-                      Donation Type:
-                    </p>
-                    <p className="text-lg font-medium">
-                      {selectedDonation.DonorType}
-                    </p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">
-                      Contact Number:
-                    </p>
-                    <p className="text-lg font-medium">
-                      {selectedDonation.Contact}
-                    </p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">Address:</p>
-                    <p className="text-lg font-medium">
-                      {selectedDonation.Address}
-                    </p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">Total Amount:</p>
-                    <p className="text-lg font-medium">
-                      {new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      }).format(selectedDonation.amount)}
-                    </p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">Payment Date:</p>
-                    <p className="text-lg font-medium">9 Aug 2024 14:00</p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">Payment Mode:</p>
-                    <p className="text-lg font-medium">Paid Via Gpay</p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">Location:</p>
-                    <p className="text-lg font-medium">Chennai</p>
-                  </div>
-                  <div className="flex justify-between">
-                    <p className="text-gray-500 font-semibold">Email Id:</p>
-                    <p className="text-lg font-medium">abc@gmail.com</p>
-                  </div>
-                  <div className="flex justify-between mb-3">
-                    <p className="text-gray-500 font-semibold">Note:</p>
-                    <p className="font-normal">
-                      A field for donors to leave a personal message
-                    </p>
-                  </div>
-                  <hr />
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              {/* Additional footer actions can go here */}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          </DropdownTrigger>
+          <DropdownMenu aria-label="Static Actions">
+            <DropdownItem key="new">Edit</DropdownItem>
+            <DropdownItem key="copy">Delete</DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
       ),
     },
   ];
@@ -280,11 +247,90 @@ const Donation: React.FC = () => {
           Organize and Manage Donation List
         </p>
         <DataTable
-          data={donationData}
+          data={filterSearchData}
           columns={columnsWithCheckboxAndAction}
           tableAction={<Tableaction />}
         />
       </div>
+      <Dialog open={openModal} onOpenChange={setOpenModal}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader className="text-[23px] font-sans font-semibold">
+            Donation
+          </DialogHeader>
+          <hr />
+          {selectedDonation && (
+            <div className="w-full mx-auto p-6 bg-white rounded-lg">
+              <div className="flex flex-col justify-start gap-4">
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Donation ID:</p>
+                  <p className="text-lg font-medium">
+                    {selectedDonation.DonationId}
+                  </p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Full Name:</p>
+                  <p className="text-lg font-medium">
+                    {selectedDonation.DonorName}
+                  </p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Donation Type:</p>
+                  <p className="text-lg font-medium">
+                    {selectedDonation.DonorType}
+                  </p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Contact Number:</p>
+                  <p className="text-lg font-medium">
+                    {selectedDonation.Contact}
+                  </p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Address:</p>
+                  <p className="text-lg font-medium">
+                    {selectedDonation.Address}
+                  </p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Total Amount:</p>
+                  <p className="text-lg font-medium">
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                    }).format(selectedDonation.amount)}
+                  </p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Payment Date:</p>
+                  <p className="text-lg font-medium">9 Aug 2024 14:00</p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Payment Mode:</p>
+                  <p className="text-lg font-medium">Paid Via Gpay</p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Location:</p>
+                  <p className="text-lg font-medium">Chennai</p>
+                </div>
+                <div className="flex justify-between">
+                  <p className="text-gray-500 font-semibold">Email Id:</p>
+                  <p className="text-lg font-medium">abc@gmail.com</p>
+                </div>
+                <div className="flex justify-between mb-3">
+                  <p className="text-gray-500 font-semibold">Note:</p>
+                  <p className="font-normal">
+                    A field for donors to leave a personal message
+                  </p>
+                </div>
+                <hr />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            {/* Additional footer actions can go here */}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
