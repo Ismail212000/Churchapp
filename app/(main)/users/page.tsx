@@ -8,9 +8,10 @@ import { Input } from "../../../components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from "../../../components/ui/select";
 import { RadioGroup, RadioGroupItem } from "../../../components/ui/radio-group";
 import { saveUser, fetchUsers } from '../../../components/actions/users';
-//import { UserData } from '../../../types'; // Import renamed type
+import DataTable from "@/components/datatable/table";
 
 interface UserData {
+  id: string;
   profilePhoto: string | null;
   familyHeadName: string;
   contact: string;
@@ -21,9 +22,14 @@ interface UserData {
   gender: string;
   age: string;
 }
-export default function Events() {
+
+export default function Users() {
   const [showForm, setShowForm] = useState(false);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [formVisible, setFormVisible] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [formData, setFormData] = useState<UserData>({
+    id: "",
     profilePhoto: null,
     familyHeadName: "",
     contact: "",
@@ -38,9 +44,20 @@ export default function Events() {
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Fetch users from Firestore when component mounts
+    const loadUsers = async () => {
+      try {
+        const userList = await fetchUsers();
+        setUsers(userList);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+
+    loadUsers();
+
     const handleClickOutside = (event: MouseEvent) => {
       if (formRef.current && !formRef.current.contains(event.target as Node)) {
-        // Do not close if the click is inside the Select component
         const selectElement = document.querySelector('.select-trigger') as HTMLElement;
         if (selectElement && selectElement.contains(event.target as Node)) {
           return;
@@ -48,18 +65,23 @@ export default function Events() {
         setShowForm(false);
       }
     };
-    
-    
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { familyHeadName, contact, email, address, memberName, relationship, gender, age } = formData;
-    if (familyHeadName && contact && email && address && relationship && gender && age) {
+    const { id, familyHeadName, contact, email, address, memberName, relationship, gender, age } = formData;
+    if (id && familyHeadName && contact && email && address && relationship && gender && age) {
       try {
         await saveUser(formData);
-        console.log("Form data submitted:", formData);
         setShowForm(false);
+        // Refresh user list after saving
+        const updatedUsers = await fetchUsers();
+        setUsers(updatedUsers);
       } catch (error) {
         console.error("Error submitting form:", error);
       }
@@ -67,7 +89,7 @@ export default function Events() {
       alert("Please fill out all required fields.");
     }
   };
-  
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -88,6 +110,33 @@ export default function Events() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleEditClick = (user: UserData) => {
+    setSelectedUser(user);
+    setFormData(user);
+    setShowForm(true);
+  };
+
+  const columns = [
+    // {
+    //   accessorKey: "profilePhoto",
+    //   header: "Profile Photo",
+    //   cell: ({ value }: { value: string }) => (
+    //     <img src={value || "/default-avatar.png"} alt="Profile" width={50} />
+    //   ),
+    // },
+    { accessorKey: "familyHeadName", header: "Family Head Name" },
+    { accessorKey: "contact", header: "Contact" },
+    { accessorKey: "email", header: "Email" },
+    { accessorKey: "address", header: "Address" },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }: { row: any }) => (
+        <Button onClick={() => handleEditClick(row.original)}>Edit</Button>
+      ),
+    },
+  ];
+
   return (
     <>
       <div className="flex justify-between items-center mb-5">
@@ -101,6 +150,7 @@ export default function Events() {
           onClick={() => {
             setShowForm(true);
             setFormData({
+              id: "",
               profilePhoto: null,
               familyHeadName: "",
               contact: "",
@@ -117,7 +167,7 @@ export default function Events() {
           <p>Create New User</p>
         </Button>
       </div>
-
+      <DataTable columns={columns} data={users} />
       <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-screen bg-white rounded-3xl relative">
         {showForm && (
           <div
@@ -215,44 +265,37 @@ export default function Events() {
               </div>
 
               <div>
-  <Label htmlFor="relationship" className="block text-sm font-medium mb-1">Relationship</Label>
-  <Select
-    name="relationship"
-    value={formData.relationship}
-    onValueChange={(value: string) => handleSelectChange("relationship", value)}
-  >
-    <SelectTrigger>
-      <SelectValue placeholder="Select Relationship" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectGroup>
-        <SelectItem value="spouse">Spouse</SelectItem>
-        <SelectItem value="child">Child</SelectItem>
-        <SelectItem value="parent">Parent</SelectItem>
-        <SelectItem value="sibling">Sibling</SelectItem>
-      </SelectGroup>
-    </SelectContent>
-  </Select>
-</div>
-
+                <Label htmlFor="relationship" className="block text-sm font-medium mb-1">Relationship</Label>
+                <Select onValueChange={(value) => handleSelectChange("relationship", value)}>
+                  <SelectTrigger className="w-full border border-gray-300 rounded-md p-2">
+                    <SelectValue placeholder="Select Relationship" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="Spouse">Spouse</SelectItem>
+                      <SelectItem value="Child">Child</SelectItem>
+                      <SelectItem value="Sibling">Sibling</SelectItem>
+                      <SelectItem value="Parent">Parent</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div>
-                <Label htmlFor="gender" className="block text-sm font-medium mb-1">Gender</Label>
+                <Label className="block text-sm font-medium mb-1">Gender</Label>
                 <RadioGroup
-                  id="gender"
-                  name="gender"
+                  className="flex gap-4"
+                  onValueChange={(value) => handleSelectChange("gender", value)}
                   value={formData.gender}
-                  onValueChange={(value: string) => handleSelectChange("gender", value)}
-                  className="space-y-2"
                 >
-                  <div className="flex items-center">
-                    <RadioGroupItem value="male" id="male" />
-                    <Label htmlFor="male" className="ml-2">Male</Label>
-                  </div>
-                  <div className="flex items-center">
-                    <RadioGroupItem value="female" id="female" />
-                    <Label htmlFor="female" className="ml-2">Female</Label>
-                  </div>
+                  <Label className="flex items-center">
+                    <RadioGroupItem value="Male" />
+                    <span className="ml-2">Male</span>
+                  </Label>
+                  <Label className="flex items-center">
+                    <RadioGroupItem value="Female" />
+                    <span className="ml-2">Female</span>
+                  </Label>
                 </RadioGroup>
               </div>
 
@@ -261,21 +304,19 @@ export default function Events() {
                 <Input
                   id="age"
                   name="age"
-                  type="number"
+                  type="text"
                   value={formData.age}
                   onChange={handleChange}
+                  required
                   className="w-full border border-gray-300 rounded-md p-2"
                 />
               </div>
 
-              <div className="flex justify-end gap-4">
-                <Button type="submit" className="bg-[#280559] text-white px-4 py-2 rounded">
-                  <FiUpload className="inline mr-2" />
-                  Save
-                </Button>
-                <Button variant="outline" onClick={() => setShowForm(false)} className="px-4 py-2 rounded">
+              <div className="flex gap-2 justify-end mt-6">
+                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                   Cancel
                 </Button>
+                <Button type="submit">Save</Button>
               </div>
             </form>
           </div>

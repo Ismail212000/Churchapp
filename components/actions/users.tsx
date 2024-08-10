@@ -27,6 +27,7 @@ import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 import { app } from "../../firebase"; // Ensure to export your Firebase app configuration
 //import { UserData } from "../../../types"; // Import renamed type
 interface UserData {
+  id: string;
   profilePhoto: string | null;
   familyHeadName: string;
   contact: string;
@@ -51,7 +52,10 @@ export const saveUser = async (userData: UserData) => {
 export const fetchUsers = async (): Promise<UserData[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, "users"));
-    const users: UserData[] = querySnapshot.docs.map(doc => doc.data() as UserData);
+    const users: UserData[] = querySnapshot.docs.map(doc => ({
+      id: doc.id, // Add the document ID here
+      ...doc.data(),
+    } as UserData));
     return users;
   } catch (error) {
     console.error("Error fetching users:", error);
