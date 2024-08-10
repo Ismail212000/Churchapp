@@ -25,7 +25,7 @@ const menuItems = [
   { name: "Dashboard", href: "/", icon: IoHome },
   { name: "Users", href: "/users", icon: FaUsers },
   { name: "Events", href: "/events", icon: BsCalendarEventFill },
-  { name: "Videos", href: "/videos", icon: FaVideo },
+  { name: "Media", href: "/videos", icon: FaVideo },
   { name: "Notification", href: "/notification", icon: FaBell },
   { name: "Announcement", href: "/announcement", icon: FaBell },
   { name: "Prayer Request", href: "/prayerRequest", icon: FaPray },
