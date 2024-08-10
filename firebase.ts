@@ -4,13 +4,13 @@ import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyApIIp95YkGet2KS_UGL1_5z2rmDbx5zQI",
-  authDomain: "church-1656a.firebaseapp.com",
-  projectId: "church-1656a",
-  storageBucket: "church-1656a.appspot.com",
-  messagingSenderId: "264969583812",
-  appId: "1:264969583812:web:614789140d6521713fdd91"
-};
+    apiKey: "AIzaSyCbq--2gbEETJR8dBIRQStsPJrCp0713c0",
+    authDomain: "appchurch-5f467.firebaseapp.com",
+    projectId: "appchurch-5f467",
+    storageBucket: "appchurch-5f467.appspot.com",
+    messagingSenderId: "941050422184",
+    appId: "1:941050422184:web:2c898b04a4d1c1d260f39d"
+  };
 
 const app = initializeApp(firebaseConfig);
 
@@ -18,4 +18,4 @@ const app = initializeApp(firebaseConfig);
 const storage = getStorage(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
-export { storage, db,auth  };
+export { storage, db,auth ,app };

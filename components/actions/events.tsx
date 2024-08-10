@@ -1,13 +1,41 @@
-import { db } from '../../firebase'; // Import your Firebase config
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, getDocs ,deleteDoc} from 'firebase/firestore';
+import { db } from '../../firebase';
 
-export const fetchEvent = async (eventId: string) => {
-  const docRef = doc(db, 'events', eventId);
-  const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? (docSnap.data() as any) : null;
-};
-
+// Save event to Firestore
 export const saveEvent = async (event: any, eventId?: string) => {
-  const docRef = doc(db, 'events', eventId || 'new');
-  return await setDoc(docRef, event, { merge: true });
+  const eventRef = eventId ? doc(db, 'events', eventId) : doc(collection(db, 'events'));
+  await setDoc(eventRef, event);
 };
+
+// Fetch an event from Firestore
+export const fetchEvent = async (eventId: string) => {
+  const eventRef = doc(db, 'events', eventId);
+  const eventSnap = await getDoc(eventRef);
+
+  if (eventSnap.exists()) {
+    return eventSnap.data();
+  } else {
+    console.log("No such document!");
+    return null;
+  }
+};
+
+// Fetch all events from Firestore
+export const fetchAllEvents = async () => {
+  const eventsRef = collection(db, 'events');
+  const eventsSnap = await getDocs(eventsRef);
+  const events: any[] = [];
+  eventsSnap.forEach((doc) => {
+    events.push({ id: doc.id, ...doc.data() });
+  });
+  return events;
+};
+export const deleteEvent = async (id: string) => {
+  try {
+    const eventRef = doc(db, "events", id);
+    await deleteDoc(eventRef);
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    throw error;
+  }
+}
