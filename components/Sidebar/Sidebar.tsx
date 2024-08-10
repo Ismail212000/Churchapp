@@ -31,7 +31,7 @@ const menuItems = [
   { name: "Prayer Request", href: "/prayerRequest", icon: FaPray },
   { name: "Daily Quote", href: "/dailyquote", icon: FaQuoteLeft },
   { name: "Auction", href: "", icon: TfiAnnouncement },
-  { name: "Donation", href: "", icon: FaDonate },
+  { name: "Donation", href: "/donation", icon: FaDonate },
   { name: "Subscription", href: "", icon: MdSubscriptions },
 ];
 
@@ -63,7 +63,7 @@ const Sidebar = () => {
           isOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 shadow-lg`}
       >
-        <div className="flex flex-col h-full p-4 pt-20 md:pt-4">
+        <div className="flex flex-col h-full p-4 pt-20 md:pt-4 overflow-auto sidebar-scroll">
           {/* Logo (hidden on mobile as it's in the header) */}
           <div className="mb-8 hidden md:block">
             <Image
