@@ -243,6 +243,7 @@ export default function Events() {
           {events.map((event) => (
             <Card key={event.id} className="w-full max-w-sm">
               {event.banner && (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={event.banner}
                   alt={event.title}
