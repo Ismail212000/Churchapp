@@ -47,6 +47,7 @@ export default function Media() {
   const [showForm, setShowForm] = useState(false);
   const [media, setMedia] = useState<Media[]>([]);
   const [editingMedia, setEditingMedia] = useState<Media | null>(null);
+  const [currentTab, setCurrentTab] = useState("current"); // Default to current events
   const [mediaToDelete, setMediaToDelete] = useState<Media | null>(null);
   const [newMedia, setNewMedia] = useState<Media>({
     id: 0,
@@ -204,6 +205,73 @@ export default function Media() {
 
       {/* main screen */}
       <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-screen bg-white rounded-3xl">
+        {/* active tabs */}
+        <div className="flex justify-start items-center mb-4">
+          <div
+            className={`${
+              currentTab === "All"
+                ? "border-b-2 text-[#280559] border-[#280559]"
+                : "text-[#92929D]"
+            } transition-all ease-in-out duration-500`}
+            onClick={() => setCurrentTab("All")}
+          >
+            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
+              All
+            </p>
+          </div>
+
+          <div
+            className={`${
+              currentTab === "youthfellow"
+                ? "border-b-2 rounded text-[#280559] border-[#280559]"
+                : " text-[#92929D]"
+            }  transition-all ease-in-out duration-500 ml-4`}
+            onClick={() => setCurrentTab("youthfellow")}
+          >
+            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
+              Youth Fellowship
+            </p>
+          </div>
+
+          <div
+            className={`${
+              currentTab === "MensFellowship"
+                ? "border-b-2 rounded text-[#280559] border-[#280559]"
+                : "text-[#92929D]"
+            } transition-all ease-in-out duration-500 ml-4`}
+            onClick={() => setCurrentTab("MensFellowship")}
+          >
+            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
+              Men’s Fellowship
+            </p>
+          </div>
+
+          <div
+            className={`${
+              currentTab === "WomenFellowship"
+                ? "border-b-2 rounded text-[#280559] border-[#280559]"
+                : "text-[#92929D]"
+            } transition-all ease-in-out duration-500 ml-4`}
+            onClick={() => setCurrentTab("WomenFellowship")}
+          >
+            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
+              Women Fellowship
+            </p>
+          </div>
+
+          <div
+            className={`${
+              currentTab === "ChoirandMusic"
+                ? "border-b-2 rounded text-[#280559] border-[#280559]"
+                : "text-[#92929D]"
+            } transition-all ease-in-out duration-500 ml-4`}
+            onClick={() => setCurrentTab("ChoirandMusic")}
+          >
+            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
+              Choir and Music
+            </p>
+          </div>
+        </div>
         {/* Media cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 justify-items-center">
           {media.map((item) => (
