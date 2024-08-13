@@ -1,31 +1,5 @@
-// import { storage, db } from '../../firebase';
-// import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-// import { collection, doc, setDoc } from 'firebase/firestore';
 
-// export const uploadImage = async (file: File | null, folderName: string): Promise<string | null> => {
-//     if (!file) return null;
-  
-//     try {
-//       const fileRef = ref(storage, `${folderName}/${Date.now()}`);
-//       const uploadTask = await uploadBytes(fileRef, file);
-//       const downloadUrl = await getDownloadURL(uploadTask.ref);
-//       return downloadUrl;
-//     } catch (error) {
-//       console.error('Error uploading image:', error);
-//       return null;
-//     }
-//   };
-
-// export const addUser = async (userData: any) => {
-//   const userRef = doc(collection(db, 'users'));
-//   await setDoc(userRef, userData);
-// };
-// src/components/actions/users.ts
-
-// actions/users.ts
-// components/actions/users.tsx
-
-import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase"; // Import `db` from firebase configuration
 import { v4 as uuidv4 } from "uuid";
 interface FamilyMember {
@@ -92,20 +66,55 @@ export const deleteUser = async (userId: string) => {
 //     throw error;
 //   }
 // };
-export const saveUser = async (user: UserData) => {
+export async function saveUser(formData: any) {
   try {
-    if (!user.id) {
-      // If no ID is provided, add a new document
-      user.id = uuidv4(); // Ensure the user has an ID before adding
-      const userRef = collection(db, "users");
-      await addDoc(userRef, user);
+    const usersCollection = collection(db, 'users'); // Replace 'users' with your collection name
+    const userDoc = doc(usersCollection, formData.id);
+
+    if (!formData.id) {
+      // If no ID, create a new document
+      formData.id = uuidv4();
+      await updateDoc(userDoc, formData);
     } else {
-      // If an ID is provided, update the existing document
-      const userRef = doc(db, "users", user.id);
-      await updateDoc(userRef, user);
+      // Check if the document exists
+      const docSnapshot = await getDoc(userDoc);
+
+      if (docSnapshot.exists()) {
+        // If document exists, update it
+        await updateDoc(userDoc, formData);
+      } else {
+        // If document does not exist, create it
+        await setDoc(userDoc, formData);
+      }
     }
+    console.log('User saved successfully');
   } catch (error) {
-    console.error("Error saving user:", error);
-    throw new Error("Failed to save user.");
+    console.error('Error saving user:', error);
   }
-};
+}
+// import { storage, db } from '../../firebase';
+// import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+// import { collection, doc, setDoc } from 'firebase/firestore';
+
+// export const uploadImage = async (file: File | null, folderName: string): Promise<string | null> => {
+//     if (!file) return null;
+  
+//     try {
+//       const fileRef = ref(storage, `${folderName}/${Date.now()}`);
+//       const uploadTask = await uploadBytes(fileRef, file);
+//       const downloadUrl = await getDownloadURL(uploadTask.ref);
+//       return downloadUrl;
+//     } catch (error) {
+//       console.error('Error uploading image:', error);
+//       return null;
+//     }
+//   };
+
+// export const addUser = async (userData: any) => {
+//   const userRef = doc(collection(db, 'users'));
+//   await setDoc(userRef, userData);
+// };
+// src/components/actions/users.ts
+
+// actions/users.ts
+// components/actions/users.tsx

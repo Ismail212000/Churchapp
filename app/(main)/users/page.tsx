@@ -163,26 +163,38 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { id, familyHeadName, contact, email, address, members } = formData;
-  
-    // Basic validation
-    if (!familyHeadName || !contact || !email || !address || members.some(member => !member.name || !member.relationship || !member.gender || !member.age)) {
-      alert("Please complete all required fields.");
-      return;
+
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  const { familyHeadName, contact, email, address, members } = formData;
+
+  if (!familyHeadName || !contact || !email || !address || members.some(member => !member.name || !member.relationship || !member.gender || !member.age)) {
+    alert("Please complete all required fields.");
+    return;
+  }
+
+  try {
+    // Generate a new ID if creating a new user
+    if (!formData.id) {
+      formData.id = uuidv4();
     }
-  
-    try {
-      await saveUser(formData);
-      setShowForm(false);
-      const updatedUsers = await fetchUsers();
-      setUsers(updatedUsers);
-    } catch (error) {
-      alert('An error occurred while saving the user.');
-      console.error('Error submitting form:', error);
+    await saveUser(formData);
+    setShowForm(false);
+    const updatedUsers = await fetchUsers();
+    setUsers(updatedUsers);
+  } catch (error) {
+    alert('An error occurred while saving the user.');
+    console.error('Error submitting form:', error);
+    // Additional logging for better debugging
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
     }
-  };
+  }
+};
+
+  
+  
   
   
   // const handleSubmit = async (e: React.FormEvent) => {
