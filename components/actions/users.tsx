@@ -23,9 +23,18 @@
 // src/components/actions/users.ts
 
 // actions/users.ts
-import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
-import { app } from "../../firebase"; // Ensure to export your Firebase app configuration
-//import { UserData } from "../../../types"; // Import renamed type
+// components/actions/users.tsx
+
+import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { db } from "../../firebase"; // Import `db` from firebase configuration
+import { v4 as uuidv4 } from "uuid";
+interface FamilyMember {
+  name: string;
+  relationship: string;
+  gender: string;
+  age: string;
+}
+
 interface UserData {
   id: string;
   profilePhoto: string | null;
@@ -33,32 +42,70 @@ interface UserData {
   contact: string;
   email: string;
   address: string;
-  memberName: string;
-  relationship: string;
-  gender: string;
-  age: string;
+  members: FamilyMember[];
+  [key: string]: any; // This allows for additional properties
 }
-const db = getFirestore(app);
 
-export const saveUser = async (userData: UserData) => {
-  try {
-    await addDoc(collection(db, "users"), userData);
-  } catch (error) {
-    console.error("Error saving user:", error);
-    throw error;
-  }
-};
+// Use `db` for all Firestore operations
+// export const saveUser = async (userData: UserData) => {
+//   try {
+//     await addDoc(collection(db, "users"), userData);
+//   } catch (error) {
+//     console.error("Error saving user:", error);
+//     throw error;
+//   }
+// };
 
 export const fetchUsers = async (): Promise<UserData[]> => {
   try {
     const querySnapshot = await getDocs(collection(db, "users"));
     const users: UserData[] = querySnapshot.docs.map(doc => ({
-      id: doc.id, // Add the document ID here
+      id: doc.id,
       ...doc.data(),
     } as UserData));
     return users;
   } catch (error) {
     console.error("Error fetching users:", error);
     throw error;
+  }
+};
+export const deleteUser = async (userId: string) => {
+  if (!userId) throw new Error('User ID is required');
+  
+  try {
+    const userDocRef = doc(db, "users", userId);
+    await deleteDoc(userDocRef);
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    throw error;
+  }
+};
+
+// export const updateUser = async (userData: UserData): Promise<UserData[]> => {
+//   const { id, ...data } = userData;
+//   try {
+//     const userDocRef = doc(db, "users", id);
+//     await updateDoc(userDocRef, data);
+//     return fetchUsers(); // Fetch the updated list of users
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     throw error;
+//   }
+// };
+export const saveUser = async (user: UserData) => {
+  try {
+    if (!user.id) {
+      // If no ID is provided, add a new document
+      user.id = uuidv4(); // Ensure the user has an ID before adding
+      const userRef = collection(db, "users");
+      await addDoc(userRef, user);
+    } else {
+      // If an ID is provided, update the existing document
+      const userRef = doc(db, "users", user.id);
+      await updateDoc(userRef, user);
+    }
+  } catch (error) {
+    console.error("Error saving user:", error);
+    throw new Error("Failed to save user.");
   }
 };

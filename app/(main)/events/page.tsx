@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { saveEvent, fetchAllEvents } from "@/components/actions/events"; // Ensure these functions are implemented
-
+import Image from "next/image";
 interface AgendaItem {
   title: string;
   time: string;
@@ -295,9 +295,11 @@ export default function Events() {
         {filterEvents(events, currentTab).map((event) => (
            <Card key={event.id} className="w-full max-w-sm">
            {event.banner && (
-             <img
+             <Image
                src={event.banner}
                alt={event.title}
+               width={50}
+               height={40}
                className="w-full h-40 object-cover rounded-t-lg"
              />
            )}

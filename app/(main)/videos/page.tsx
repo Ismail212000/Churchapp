@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
+import Image from "next/image";
 
 interface AgendaItem {
   title: string;
@@ -277,9 +278,11 @@ export default function Media() {
           {media.map((item) => (
             <Card key={item.id} className="w-full max-w-sm">
               {item.banner && (
-                <img
+                <Image
                   src={item.banner}
                   alt={item.title}
+                  width={50}
+                  height={40}
                   className="w-full h-40 object-cover rounded-t-lg"
                 />
               )}
@@ -453,7 +456,7 @@ export default function Media() {
                   className="w-full p-2 border rounded"
                 />
                 {newMedia.banner && (
-                  <img
+                  <Image
                     src={newMedia.banner}
                     alt="Banner Preview"
                     className="w-full mt-2"
