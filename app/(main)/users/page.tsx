@@ -38,36 +38,6 @@ interface UserData {
   members: FamilyMember[];
 }
 
-const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ user, onClose }) => {
-  if (!user) return null;
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div className="bg-white p-8 rounded shadow-md w-96">
-        <h2 className="text-2xl font-bold mb-4">User Details</h2>
-        <Image src={user.profilePhoto || ""} alt="Profile" className="w-32 h-32 object-cover mb-4 mx-auto" />
-        <p><strong>Family Head Name:</strong> {user.familyHeadName}</p>
-        <p><strong>Contact:</strong> {user.contact}</p>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>password:</strong> {user.password}</p>
-        <p><strong>Address:</strong> {user.address}</p>
-        <p><strong>Members:</strong></p>
-        <ul>
-          {user.members && user.members.length > 0 ? (
-            user.members.map((member, index) => (
-              <li key={index}>
-                <strong>Name:</strong> {member.name}, <strong>Relationship:</strong> {member.relationship}, <strong>Gender:</strong> {member.gender}, <strong>Age:</strong> {member.age}
-              </li>
-            ))
-          ) : (
-            <li>No members</li>
-          )}
-        </ul>
-        <button onClick={onClose} className="mt-4 bg-blue-500 text-white py-2 px-4 rounded">Close</button>
-      </div>
-    </div>
-  );
-};
 
 const OptionsDropdown: React.FC<{ userId: string; onEdit: () => void; onDelete: () => void }> = ({ userId, onEdit, onDelete }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -121,12 +91,12 @@ const OptionsDropdown: React.FC<{ userId: string; onEdit: () => void; onDelete: 
   );
 };
 export default function Users() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // const [name, setName] = useState('');
+  // const [email, setEmail] = useState('');
+  // const [password, setPassword] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [users, setUsers] = useState<UserData[]>([]);
-  const [formVisible, setFormVisible] = useState(true);
+  // const [formVisible, setFormVisible] = useState(true);
   const [showModal, setShowModal] = useState(false);
 const [userDetails, setUserDetails] = useState<UserData | null>(null);
 const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ user, onClose }) => {

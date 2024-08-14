@@ -18,21 +18,25 @@ import {
   FaSignOutAlt,
 } from "react-icons/fa";
 import { BsCalendarEventFill } from "react-icons/bs";
-import { TfiAnnouncement } from "react-icons/tfi";
+import { GiTemplarShield } from "react-icons/gi";
 import { MdSubscriptions } from "react-icons/md";
+import { HiSpeakerphone } from "react-icons/hi";
+
 
 const menuItems = [
   { name: "Dashboard", href: "/", icon: IoHome },
   { name: "Users", href: "/users", icon: FaUsers },
   { name: "Events", href: "/events", icon: BsCalendarEventFill },
-  { name: "Media", href: "/videos", icon: FaVideo },
-  { name: "Notification", href: "/notification", icon: FaBell },
-  { name: "Announcement", href: "/announcement", icon: FaBell },
+  { name: "Media", href: "/media", icon: FaVideo },
+  // { name: "Notification", href: "/notification", icon: FaBell },
+  { name: "Announcement", href: "/announcement", icon: HiSpeakerphone  },
   { name: "Prayer Request", href: "/prayerRequest", icon: FaPray },
   { name: "Daily Quote", href: "/dailyquote", icon: FaQuoteLeft },
-  { name: "Auction", href: "", icon: TfiAnnouncement },
+  // { name: "Auction", href: "", icon: TfiAnnouncement },
   { name: "Donation", href: "/donation", icon: FaDonate },
   { name: "Subscription", href: "", icon: MdSubscriptions },
+  { name: "Ministries", href: "/videos", icon: GiTemplarShield },
+
 ];
 
 const Sidebar = () => {

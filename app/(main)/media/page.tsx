@@ -1,39 +1,18 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  FiPlusCircle,
-  FiEdit,
-  FiTrash2,
-  FiX,
-  FiClock,
-  FiUpload,
-} from "react-icons/fi";
+import {  FiEdit, FiTrash2, FiX, } from "react-icons/fi";
 import { Switch } from "@/components/ui/switch";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
+import {  Card, CardHeader, CardContent, CardFooter, CardTitle,} from "@/components/ui/card";
+import {  Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogClose,} from "@/components/ui/dialog";
 import Image from "next/image";
-
+import AddMedia from "@/components/actions/media";
 interface AgendaItem {
   title: string;
   time: string;
 }
 
-interface ministries {
+interface media {
   id: number;
   title: string;
   description: string;
@@ -42,15 +21,16 @@ interface ministries {
   isPaidEvent: boolean;
   banner: string | null;
   repeat: boolean;
+  type: string; 
 }
 
-export default function ministries() {
+export default function media() {
   const [showForm, setShowForm] = useState(false);
-  const [ministries, setministries] = useState<ministries[]>([]);
-  const [editingministries, setEditingministries] = useState<ministries | null>(null);
+  const [media, setmedia] = useState<media[]>([]);
+  const [editingmedia, setEditingmedia] = useState<media | null>(null);
   const [currentTab, setCurrentTab] = useState("current"); // Default to current events
-  const [ministriesToDelete, setministriesToDelete] = useState<ministries | null>(null);
-  const [newministries, setNewministries] = useState<ministries>({
+  const [mediaToDelete, setmediaToDelete] = useState<media | null>(null);
+  const [newmedia, setNewmedia] = useState<media>({
     id: 0,
     title: "",
     description: "",
@@ -59,6 +39,7 @@ export default function ministries() {
     isPaidEvent: false,
     banner: null,
     repeat: false,
+    type: "Video",
   });
 
   const formRef = useRef<HTMLDivElement>(null);
@@ -67,7 +48,7 @@ export default function ministries() {
     const handleClickOutside = (event: MouseEvent) => {
       if (formRef.current && !formRef.current.contains(event.target as Node)) {
         setShowForm(false);
-        setEditingministries(null);
+        setEditingmedia(null);
       }
     };
 
@@ -80,7 +61,7 @@ export default function ministries() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const defaultNewministries = {
+    const defaultNewmedia = {
       id: Date.now(),
       title: "",
       date: "",
@@ -89,19 +70,20 @@ export default function ministries() {
       isPaidEvent: false,
       banner: "",
       repeat: false,
+      type: currentTab,  
     };
 
-    const ministriesToSave = { ...defaultNewministries, ...newministries };
+    const mediaToSave = { ...defaultNewmedia, ...newmedia };
 
-    if (editingministries) {
-      setministries((prev) =>
-        prev.map((item) => (item.id === editingministries.id ? ministriesToSave : item))
+    if (editingmedia) {
+      setmedia((prev) =>
+        prev.map((item) => (item.id === editingmedia.id ? mediaToSave : item))
       );
     } else {
-      setministries((prev) => [...prev, ministriesToSave]);
+      setmedia((prev) => [...prev, mediaToSave]);
     }
 
-    setNewministries({
+    setNewmedia({
       id: 0,
       title: "",
       date: "",
@@ -110,28 +92,29 @@ export default function ministries() {
       isPaidEvent: false,
       banner: "",
       repeat: false,
+      type: currentTab,  
     });
 
     setShowForm(false);
-    setEditingministries(null);
+    setEditingmedia(null);
   };
 
-  const handleEdit = (item: ministries) => {
-    setEditingministries(item);
-    setNewministries(item);
+  const handleEdit = (item: media) => {
+    setEditingmedia(item);
+    setNewmedia(item);
     setShowForm(true);
   };
 
   const handleDelete = (id: number) => {
-    setministries((prev) => prev.filter((item) => item.id !== id));
-    setministriesToDelete(null); // Close the dialog after deletion
+    setmedia((prev) => prev.filter((item) => item.id !== id));
+    setmediaToDelete(null); // Close the dialog after deletion
   };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setNewministries((prev) => ({ ...prev, [name]: value }));
+    setNewmedia((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAgendaChange = (
@@ -139,7 +122,7 @@ export default function ministries() {
     field: "title" | "time",
     value: string
   ) => {
-    setNewministries((prev) => {
+    setNewmedia((prev) => {
       const newAgenda = [...prev.agenda];
       newAgenda[index] = { ...newAgenda[index], [field]: value };
       return { ...prev, agenda: newAgenda };
@@ -147,7 +130,7 @@ export default function ministries() {
   };
 
   const addAgendaItem = () => {
-    setNewministries((prev) => ({
+    setNewmedia((prev) => ({
       ...prev,
       agenda: [...prev.agenda, { title: "", time: "" }],
     }));
@@ -157,7 +140,7 @@ export default function ministries() {
     checked: boolean,
     field: "isPaidEvent" | "repeat"
   ) => {
-    setNewministries((prev) => ({ ...prev, [field]: checked }));
+    setNewmedia((prev) => ({ ...prev, [field]: checked }));
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,117 +148,50 @@ export default function ministries() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewministries((prev) => ({ ...prev, banner: reader.result as string }));
+        setNewmedia((prev) => ({ ...prev, banner: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
   };
+//   const filteredMedia = mediaItems.filter(
+//     (item) => item.type.toLowerCase() === currentTab.toLowerCase()
+//   );
 
   return (
     <>
-      {/* ministries header */}
-      <div className="flex justify-between items-center mb-5">
+      {/* media header */}
+      <div className="flex justify-between items-center mb-5 ">
         <div>
-          <h1 className="text-[#280559] font-bold text-xl sm:text-lg">ministries</h1>
-          <p className="text-[#9898A3] text-xs">View all ministries here</p>
-        </div>
-
-        <div>
-          <Button
-            className="bg-[#280559] text-white flex gap-2"
-            onClick={() => {
-              setShowForm(true);
-              setEditingministries(null);
-              setNewministries({
-                id: 0,
-                title: "",
-                description: "",
-                date: "",
-                agenda: [{ title: "", time: "" }],
-                isPaidEvent: false,
-                banner: null,
-                repeat: false,
-              });
-            }}
-          >
-            <FiPlusCircle />
-            <p>Create New ministries</p>
-          </Button>
+          <h1 className="text-[#280559] font-bold text-xl sm:text-lg">media</h1>
+          <p className="text-[#9898A3] text-xs">View all media here</p>
         </div>
       </div>
 
       {/* main screen */}
-      <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-screen bg-white rounded-3xl">
+      <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-[90%] bg-white rounded-3xl">
         {/* active tabs */}
-        <div className="flex justify-start items-center mb-4">
-          <div
-            className={`${
-              currentTab === "All"
-                ? "border-b-2 text-[#280559] border-[#280559]"
-                : "text-[#92929D]"
-            } transition-all ease-in-out duration-500`}
-            onClick={() => setCurrentTab("All")}
-          >
-            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
-              All
-            </p>
-          </div>
-
-          <div
-            className={`${
-              currentTab === "youthfellow"
-                ? "border-b-2 rounded text-[#280559] border-[#280559]"
-                : " text-[#92929D]"
-            }  transition-all ease-in-out duration-500 ml-4`}
-            onClick={() => setCurrentTab("youthfellow")}
-          >
-            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
-              Youth Fellowship
-            </p>
-          </div>
-
-          <div
-            className={`${
-              currentTab === "MensFellowship"
-                ? "border-b-2 rounded text-[#280559] border-[#280559]"
-                : "text-[#92929D]"
-            } transition-all ease-in-out duration-500 ml-4`}
-            onClick={() => setCurrentTab("MensFellowship")}
-          >
-            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
-              Men’s Fellowship
-            </p>
-          </div>
-
-          <div
-            className={`${
-              currentTab === "WomenFellowship"
-                ? "border-b-2 rounded text-[#280559] border-[#280559]"
-                : "text-[#92929D]"
-            } transition-all ease-in-out duration-500 ml-4`}
-            onClick={() => setCurrentTab("WomenFellowship")}
-          >
-            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
-              Women Fellowship
-            </p>
-          </div>
-
-          <div
-            className={`${
-              currentTab === "ChoirandMusic"
-                ? "border-b-2 rounded text-[#280559] border-[#280559]"
-                : "text-[#92929D]"
-            } transition-all ease-in-out duration-500 ml-4`}
-            onClick={() => setCurrentTab("ChoirandMusic")}
-          >
-            <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
-              Choir and Music
-            </p>
-          </div>
-        </div>
-        {/* ministries cards */}
+        <AddMedia 
+        className="text-white flex gap-2"
+        onClick={() => {
+          setShowForm(true);
+          setEditingmedia(null);
+          setNewmedia({
+            id: 0,
+            title: "",
+            description: "",
+            date: "",
+            agenda: [{ title: "", time: "" }],
+            isPaidEvent: false,
+            banner: null,
+            repeat: false,
+            type: currentTab,
+          });
+        }}
+        />
+      
+        {/* media cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 justify-items-center">
-          {ministries.map((item) => (
+          {media.map((item) => (
             <Card key={item.id} className="w-full max-w-sm">
               {item.banner && (
                 <Image
@@ -368,9 +284,9 @@ export default function ministries() {
                 <input
                   type="text"
                   name="title"
-                  value={newministries.title}
+                  value={newmedia.title}
                   onChange={handleInputChange}
-                  placeholder="Name of ministries"
+                  placeholder="Name of media"
                   className="w-full p-2 border rounded"
                 />
               </div>
@@ -380,9 +296,9 @@ export default function ministries() {
                 </label>
                 <textarea
                   name="description"
-                  value={newministries.description}
+                  value={newmedia.description}
                   onChange={handleInputChange}
-                  placeholder="Description of ministries"
+                  placeholder="Description of media"
                   className="w-full p-2 border rounded"
                 />
               </div>
@@ -391,14 +307,14 @@ export default function ministries() {
                 <input
                   type="date"
                   name="date"
-                  value={newministries.date}
+                  value={newmedia.date}
                   onChange={handleInputChange}
                   className="w-full p-2 border rounded"
                 />
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Agenda</label>
-                {newministries.agenda.map((item, index) => (
+                {newmedia.agenda.map((item, index) => (
                   <div key={index} className="flex gap-2 mb-2">
                     <input
                       type="text"
@@ -429,7 +345,7 @@ export default function ministries() {
               </div>
               <div className="mb-4 flex gap-2 items-center">
                 <Switch
-                  checked={newministries.isPaidEvent}
+                  checked={newmedia.isPaidEvent}
                   onCheckedChange={(checked) =>
                     handleSwitchChange(checked, "isPaidEvent")
                   }
@@ -438,7 +354,7 @@ export default function ministries() {
               </div>
               <div className="mb-4 flex gap-2 items-center">
                 <Switch
-                  checked={newministries.repeat}
+                  checked={newmedia.repeat}
                   onCheckedChange={(checked) =>
                     handleSwitchChange(checked, "repeat")
                   }
@@ -455,9 +371,9 @@ export default function ministries() {
                   onChange={handleFileUpload}
                   className="w-full p-2 border rounded"
                 />
-                {newministries.banner && (
+                {newmedia.banner && (
                   <Image
-                    src={newministries.banner}
+                    src={newmedia.banner}
                     alt="Banner Preview"
                     className="w-full mt-2"
                   />
@@ -465,7 +381,7 @@ export default function ministries() {
               </div>
               <div className="flex justify-end">
                 <Button type="submit" className="bg-blue-500 text-white">
-                  {editingministries ? "Update" : "Create"}
+                  {editingmedia ? "Update" : "Create"}
                 </Button>
               </div>
             </form>

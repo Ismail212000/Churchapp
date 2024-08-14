@@ -197,6 +197,7 @@ export default function PrayerRequest() {
   const [selectedRequest, setSelectedRequest] =
     useState<PrayerRequestType | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const requestsPerPage = 12;
 
@@ -214,7 +215,16 @@ export default function PrayerRequest() {
     setSelectedRequest(request);
     setDialogOpen(true);
   };
+  const handleEditClick = (request: PrayerRequestType) => {
+    setSelectedRequest(request);
+    setEditDialogOpen(true);
+  };
 
+  const handleEdit = () => {
+    // Implement editlogic here
+    console.log(`Edit request: ${selectedRequest?.id}`);
+    setEditDialogOpen(false);
+  };
   const handleDeleteClick = (request: PrayerRequestType) => {
     setSelectedRequest(request);
     setDeleteDialogOpen(true);
@@ -241,7 +251,7 @@ export default function PrayerRequest() {
       </div>
 
       {/* Main screen with table */}
-      <div className="sm:mt-4 md:mt-5 sm:px-4 md:px-8 lg:px-12 h-[90vh] bg-white rounded-3xl">
+      <div className="sm:mt-4 md:mt-5 sm:px-4 md:px-8 lg:px-12 h-screen bg-white rounded-3xl">
         {/* Search and Action Bar */}
         <SearchActionBar
           onSearch={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -319,6 +329,12 @@ export default function PrayerRequest() {
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-24 p-1 shadow-md">
+                    <button
+                        onClick={() => handleEditClick(request)}
+                        className="text-blue-500 hover:bg-blue-100 px-2 py-1 text-sm w-full text-center rounded"
+                      >
+                        Edit
+                      </button>
                       <button
                         onClick={() => handleDeleteClick(request)}
                         className="text-red-500 hover:bg-red-100 px-2 py-1 text-sm w-full text-center rounded"
