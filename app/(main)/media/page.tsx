@@ -24,7 +24,7 @@ interface media {
   type: string; 
 }
 
-export default function media() {
+export default function Media() {
   const [showForm, setShowForm] = useState(false);
   const [media, setmedia] = useState<media[]>([]);
   const [editingmedia, setEditingmedia] = useState<media | null>(null);

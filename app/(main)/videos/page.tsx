@@ -44,7 +44,7 @@ interface ministries {
   repeat: boolean;
 }
 
-export default function ministries() {
+export default function Ministries() {
   const [showForm, setShowForm] = useState(false);
   const [ministries, setministries] = useState<ministries[]>([]);
   const [editingministries, setEditingministries] = useState<ministries | null>(null);
