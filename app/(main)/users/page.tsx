@@ -2,12 +2,11 @@
 "use client";
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { FiPlusCircle, FiX, FiUpload } from "react-icons/fi";
+import { FiPlusCircle, FiX} from "react-icons/fi";
 import { Label } from "../../../components/ui/label";
 import { Input } from "../../../components/ui/input";
-//import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from "../../../components/ui/select";
 import { RadioGroup, RadioGroupItem } from "../../../components/ui/radio-group";
-import { saveUser, fetchUsers,deleteUser } from '../../../components/actions/users';
+import {  fetchUsers,deleteUser } from '../../../components/actions/users';
 import DataTable from "@/components/datatable/table";
 import { IoMdSearch } from "react-icons/io";
 import { IoFilterSharp, IoPrintSharp } from "react-icons/io5";
@@ -15,6 +14,12 @@ import { MdOutlineArrowCircleDown } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { v4 as uuidv4 } from "uuid";
 import Image from "next/image";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { doc, setDoc, Timestamp } from "firebase/firestore";
+import { auth, db } from "../../../firebase";
+
+
+
 interface FamilyMember {
   name: string;
   relationship: string;
@@ -28,9 +33,11 @@ interface UserData {
   familyHeadName: string;
   contact: string;
   email: string;
+  password:string;
   address: string;
   members: FamilyMember[];
 }
+
 const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ user, onClose }) => {
   if (!user) return null;
 
@@ -42,6 +49,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
         <p><strong>Family Head Name:</strong> {user.familyHeadName}</p>
         <p><strong>Contact:</strong> {user.contact}</p>
         <p><strong>Email:</strong> {user.email}</p>
+        <p><strong>password:</strong> {user.password}</p>
         <p><strong>Address:</strong> {user.address}</p>
         <p><strong>Members:</strong></p>
         <ul>
@@ -64,25 +72,58 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
 const OptionsDropdown: React.FC<{ userId: string; onEdit: () => void; onDelete: () => void }> = ({ userId, onEdit, onDelete }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const toggleDropdown = () => setIsOpen(prev => !prev);
-  const closeDropdown = () => setIsOpen(false);
+  const toggleDropdown = () => {
+    setIsOpen(!isOpen);
+  };
 
+  const closeDropdown = () => {
+    setIsOpen(false);
+  };
   return (
     <div className="flex gap-2 relative">
       <Button variant="outline" className="p-2" onClick={toggleDropdown}>
         <BsThreeDotsVertical />
       </Button>
       {isOpen && (
-        <div className="absolute right-0 bottom-0 mt-2 bg-white border rounded shadow-lg z-10">
-          <button className="block px-4 py-2 text-gray-800 hover:bg-gray-100" onClick={() => { onEdit(); closeDropdown(); }}>Edit</button>
-          <button className="block px-4 py-2 text-gray-800 hover:bg-gray-100" onClick={() => { onDelete(); closeDropdown(); }}>Delete</button>
-        </div>
+        <>
+          <div className="absolute right-0 bottom-0 mt-2 bg-white border rounded shadow-lg z-10">
+            <button
+              className="block px-4 py-2 text-gray-800 hover:bg-gray-100"
+              onClick={() => {
+                onEdit();
+                closeDropdown();
+              }}
+            >
+              Edit
+            </button>
+            <button
+              className="block px-4 py-2 text-gray-800 hover:bg-gray-100"
+              onClick={() => {
+                onDelete();
+                closeDropdown();
+              }}
+            >
+              Delete
+            </button>
+          </div>
+          <div
+            className="fixed inset-0 bg-transparent"
+            onClick={(e) => {
+              // Check if click is outside of dropdown and button
+              if (isOpen) {
+                closeDropdown();
+              }
+            }}
+          />
+        </>
       )}
-      {isOpen && <div className="fixed inset-0" onClick={(e) => { if (!e.currentTarget.contains(e.target as Node)) closeDropdown(); }} />}
     </div>
   );
 };
 export default function Users() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [users, setUsers] = useState<UserData[]>([]);
   const [formVisible, setFormVisible] = useState(true);
@@ -99,6 +140,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
         <p><strong>Family Head Name:</strong> {user.familyHeadName}</p>
         <p><strong>Contact:</strong> {user.contact}</p>
         <p><strong>Email:</strong> {user.email}</p>
+        <p><strong>password:</strong> {user.password}</p>
         <p><strong>Address:</strong> {user.address}</p>
         <p><strong>Members:</strong></p>
         <ul>
@@ -126,6 +168,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     familyHeadName: "",
     contact: "",
     email: "",
+    password:"",
     address: "",
     members: [], // Ensure this is an empty array
   });
@@ -164,60 +207,69 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     };
   }, []);
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  const { familyHeadName, contact, email, address, members } = formData;
-
-  if (!familyHeadName || !contact || !email || !address || members.some(member => !member.name || !member.relationship || !member.gender || !member.age)) {
-    alert("Please complete all required fields.");
-    return;
-  }
-
-  try {
-    // Generate a new ID if creating a new user
-    if (!formData.id) {
-      formData.id = uuidv4();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { familyHeadName, contact, email, password, address, members } = formData;
+  
+    // Validate required fields
+    if (!familyHeadName || !contact || !email || !password || !address || members.some(member => !member.name || !member.relationship || !member.gender || !member.age)) {
+      alert("Please complete all required fields.");
+      return;
     }
-    await saveUser(formData);
-    setShowForm(false);
-    const updatedUsers = await fetchUsers();
-    setUsers(updatedUsers);
-  } catch (error) {
-    alert('An error occurred while saving the user.');
-    console.error('Error submitting form:', error);
-    // Additional logging for better debugging
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
+  
+    try {
+      if (!formData.id) {
+        formData.id = uuidv4();
+      }
+  
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      console.log('User created:', userCredential);
+  
+      // Send verification email
+      try {
+        await sendEmailVerification(user);
+        console.log('Verification email sent successfully');
+        alert('Verification email sent successfully. Please check your inbox.');
+      } catch (verificationError: unknown) {
+        if (verificationError instanceof Error) {
+          console.error('Failed to send verification email:', verificationError.message);
+          alert(`Failed to send verification email. Error: ${verificationError.message}`);
+        } else {
+          console.error('Failed to send verification email:', verificationError);
+          alert('Failed to send verification email. Please try again later.');
+        }
+      }
+  
+      const userData: UserData = {
+        ...formData,
+        id: user.uid,
+      };
+  
+      // Save user data to Firestore
+      await setDoc(doc(db, "users", user.uid), userData);
+      setShowForm(false);
+      const updatedUsers = await fetchUsers();
+      setUsers(updatedUsers);
+  
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error submitting form:', error.message);
+        alert(`An error occurred while saving the user. Error: ${error.message}`);
+      } else {
+        console.error('An unexpected error occurred:', error);
+        alert('An error occurred while saving the user.');
+      }
     }
-  }
-};
+  };
+  
+
 
   
   
   
   
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   const { id, familyHeadName, contact, email, address } = formData;
-  //   if (familyHeadName && contact && email && address) {
-  //     try {
-  //       // Generate a new ID if creating a new user
-  //       if (!id) {
-  //         formData.id = uuidv4();
-  //       }
-  //       await saveUser(formData);
-  //       setShowForm(false);
-  //       // Refresh user list after saving
-  //       const updatedUsers = await fetchUsers();
-  //       setUsers(updatedUsers);
-  //     } catch (error) {
-  //       console.error("Error submitting form:", error);
-  //     }
-  //   } else {
-  //     alert("Please fill out all required fields.");
-  //   }
-  // };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,13 +287,13 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (index: number, field: string, value: string) => {
-    setFormData(prev => {
-      const updatedMembers = [...prev.members];
-      updatedMembers[index] = { ...updatedMembers[index], [field]: value };
-      return { ...prev, members: updatedMembers };
-    });
-  };
+  // const handleSelectChange = (index: number, field: string, value: string) => {
+  //   setFormData(prev => {
+  //     const updatedMembers = [...prev.members];
+  //     updatedMembers[index] = { ...updatedMembers[index], [field]: value };
+  //     return { ...prev, members: updatedMembers };
+  //   });
+  // };
   
   // Update handleFamilyMemberChange function
   const handleFamilyMemberChange = (index: number, field: string, value: string) => {
@@ -299,7 +351,6 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     { accessorKey: "email", header: "Email" },
     { accessorKey: "address", header: "Address" },
     { accessorKey: "members", header: "Members", cell: ({ row }: { row: any }) => (row.original.members || []).length },
-    { accessorKey: "status", header: "Status" },
     {
       id: "actions",
       header: "Actions",
@@ -329,6 +380,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
         user.familyHeadName.toLowerCase().includes(searchLower) ||
         user.contact.toLowerCase().includes(searchLower) ||
         user.email.toLowerCase().includes(searchLower) ||
+        user.password.toLowerCase().includes(searchLower) ||
         user.address.toLowerCase().includes(searchLower)
       );
     });
@@ -386,6 +438,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
               familyHeadName: "",
               contact: "",
               email: "",
+              password:"",
               address: "",
               members: [], // Reset members to an empty array
             });
@@ -460,6 +513,15 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
                   id="email"
                   name="email"
                   value={formData.email}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="mb-4">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  value={formData.password}
                   onChange={handleChange}
                 />
               </div>
