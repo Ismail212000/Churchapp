@@ -36,6 +36,7 @@ interface UserData {
   password:string;
   address: string;
   members: FamilyMember[];
+  churchId?: string;
 }
 
 
@@ -141,6 +142,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     password:"",
     address: "",
     members: [], // Ensure this is an empty array
+    churchId: "",
   });
   
 
@@ -148,6 +150,13 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
   const [filterApplied, setFilterApplied] = useState(false); // New state for filter
 
   const formRef = useRef<HTMLDivElement>(null);
+
+  useEffect(()=>{
+    const storedChurchId = localStorage.getItem('storedChurchId');
+    if(storedChurchId){
+      setFormData({...formData, churchId: storedChurchId})
+    }
+  },[])
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -347,12 +356,12 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     return users.filter(user => {
       const searchLower = searchValue.toLowerCase();
       return (
-        user.familyHeadName.toLowerCase().includes(searchLower) ||
-        user.contact.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower) ||
-        user.password.toLowerCase().includes(searchLower) ||
-        user.address.toLowerCase().includes(searchLower)
+        (user.familyHeadName && user.familyHeadName.toLowerCase().includes(searchLower)) ||
+        (user.contact && user.contact.toLowerCase().includes(searchLower)) ||
+        (user.email && user.email.toLowerCase().includes(searchLower)) ||
+        (user.password && user.password.toLowerCase().includes(searchLower))
       );
+      
     });
   }, [searchValue, users]);
 
@@ -401,6 +410,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
         <Button
           className="bg-[#280559] text-white flex gap-2"
           onClick={() => {
+            const storedChurchId = localStorage.getItem('storedChurchId') || "";
             setShowForm(true);
             setFormData({
               id: "",
@@ -411,6 +421,8 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
               password:"",
               address: "",
               members: [], // Reset members to an empty array
+              churchId: storedChurchId
+              
             });
           }}
           

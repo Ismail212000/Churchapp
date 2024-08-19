@@ -44,6 +44,12 @@ const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
+  function deleteToken() {
+    localStorage.removeItem("token");
+    window.location.reload(); // Reload the page after deleting the token
+  }
+  
+  
 
   return (
     <>
@@ -103,7 +109,7 @@ const Sidebar = () => {
           <div className="mt-auto pt-4 border-t border-gray-200">
             <button
               onClick={() => {
-                /* Add logout logic here */
+                deleteToken()
               }}
               className="flex items-center w-full p-2 rounded-md text-gray-700 hover:bg-gray-200 transition-colors duration-200"
             >
