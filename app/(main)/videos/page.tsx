@@ -205,7 +205,7 @@ export default function Ministries() {
       </div>
 
       {/* main screen */}
-      <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-screen bg-white rounded-3xl">
+      <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-[90%] bg-white rounded-3xl">
         {/* active tabs */}
         <div className="flex justify-start items-center mb-4">
           <div
