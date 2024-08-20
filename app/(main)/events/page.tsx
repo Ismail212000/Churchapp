@@ -33,6 +33,7 @@ interface Event {
   isPaidEvent: boolean;
   banner: string | null;
   repeat: boolean;
+  churchId?: string;
 }
 
 export default function Events() {
@@ -51,6 +52,7 @@ export default function Events() {
     isPaidEvent: false,
     banner: null,
     repeat: false,
+    churchId: '',
   });
 
   const formRef = useRef<HTMLDivElement>(null);
@@ -88,19 +90,24 @@ export default function Events() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
+  
     try {
+      // Retrieve churchId from local storage
+      const churchId = localStorage.getItem("storedChurchId");
+  
+      // Construct the event to save, including the churchId
       const eventToSave = {
         ...newEvent,
         id: editingEvent ? editingEvent.id : Date.now(),
+        churchId: churchId || "", // Add churchId to the event data
       };
-
+  
       if (editingEvent) {
         await saveEvent(eventToSave, editingEvent.id.toString());
       } else {
         await saveEvent(eventToSave);
       }
-
+  
       setEvents((prev) => {
         return editingEvent
           ? prev.map((event) =>
@@ -108,7 +115,7 @@ export default function Events() {
             )
           : [...prev, eventToSave];
       });
-
+  
       setNewEvent({
         id: 0,
         title: "",
@@ -118,6 +125,7 @@ export default function Events() {
         isPaidEvent: false,
         banner: null,
         repeat: false,
+        churchId: "", // Reset the churchId in the form data
       });
       setShowForm(false);
       setEditingEvent(null);
@@ -182,6 +190,7 @@ export default function Events() {
       reader.readAsDataURL(file);
     }
   };
+  
 
   const isCurrentEvent = (eventDate: string) => {
     const today = new Date();
@@ -226,6 +235,7 @@ export default function Events() {
           <Button
             className="bg-[#280559] text-white flex gap-2"
             onClick={() => {
+               const storedChurchId = localStorage.getItem('storedChurchId') || "";
               setShowForm(true);
               setEditingEvent(null);
               setNewEvent({
@@ -237,6 +247,7 @@ export default function Events() {
                 isPaidEvent: false,
                 banner: null,
                 repeat: false,
+                churchId: storedChurchId
               });
             }}
           >
@@ -291,52 +302,58 @@ export default function Events() {
         </div>
         {/* Event cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 justify-items-center">
+  {filterEvents(events, currentTab).map((event) => {
+    // Assuming event.date is a Date object or a parsable date string
+    const isUpcomingEvent = new Date(event.date) > new Date();
 
-        {filterEvents(events, currentTab).map((event) => (
-           <Card key={event.id} className="w-full max-w-sm">
-           {event.banner && (
-             <Image
-               src={event.banner}
-               alt={event.title}
-               width={50}
-               height={40}
-               className="w-full h-40 object-cover rounded-t-lg"
-             />
-           )}
-           <CardHeader>
-             <CardTitle>{event.title}</CardTitle>
-           </CardHeader>
-           <CardContent>
-             <p>{event.description}</p>
-             {event.isPaidEvent && (
-               <p className="mt-2 text-green-600">Paid Event</p>
-             )}
-             {event.repeat && (
-               <p className="mt-2 text-blue-600">Repeating Event</p>
-             )}
-           </CardContent>
-           <CardFooter className="justify-center gap-2">
-           <Button
-      onClick={() => handleEdit(event)}
-      size="sm"
-      variant="outline"
-      className="bg-[#047857] text-white"
-    >
-               <FiEdit className="mr-2" />
-               Edit
-             </Button>
-             <Button
-               onClick={() => handleDelete(event.id)}
-               size="sm"
-               variant="outline"
-             >
-               <FiTrash2 className="text-[#047857]" />
-             </Button>
-           </CardFooter>
-         </Card>
+    return (
+      <Card key={event.id} className="w-full max-w-sm">
+        {event.banner && (
+          <Image
+            src={event.banner}
+            alt={event.title}
+            width={50}
+            height={40}
+            className="w-full h-40 object-cover rounded-t-lg"
+          />
+        )}
+        <CardHeader>
+          <CardTitle>{event.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>{event.description}</p>
+          {event.isPaidEvent && (
+            <p className="mt-2 text-green-600">Paid Event</p>
+          )}
+          {event.repeat && (
+            <p className="mt-2 text-blue-600">Repeating Event</p>
+          )}
+        </CardContent>
+        <CardFooter className="justify-center gap-2">
+          {isUpcomingEvent && (
+            <Button
+              onClick={() => handleEdit(event)}
+              size="sm"
+              variant="outline"
+              className="bg-[#047857] text-white"
+            >
+              <FiEdit className="mr-2" />
+              Edit
+            </Button>
+          )}
+          <Button
+            onClick={() => handleDelete(event.id)}
+            size="sm"
+            variant="outline"
+          >
+            <FiTrash2 className="text-[#047857]" />
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  })}
+</div>
 
-          ))}
-        </div>
 
         {/* Side form */}
         {showForm && (
@@ -443,11 +460,12 @@ export default function Events() {
                       </p>
                     </div>
                     <input
-                      type="file"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                      accept="image/*"
-                    />
+                  type="file"
+                  id="events"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="mb-2"
+                />
                   </label>
                 </div>
               </div>
