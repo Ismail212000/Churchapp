@@ -469,4 +469,4 @@ export default function Announcement() {
         </Dialog>
       </>
     );
-  }
+}
