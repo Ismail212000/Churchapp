@@ -13,8 +13,14 @@ import {
   DialogFooter,
   DialogHeader,
 } from "@/components/ui/dialog";
-
+import Image from "next/image";
+import { collection, getDocs, doc, deleteDoc, query, where, addDoc, updateDoc } from "firebase/firestore";
+import { db } from "../../../firebase";
+// Import db from firebase configuration
+ 
+ 
 interface Announcement {
+  id?: string;
   title: string;
   description: string;
   date: string;
@@ -22,7 +28,7 @@ interface Announcement {
   isPinned: boolean;
   image: string | null;
 }
-
+ 
 export default function Announcement() {
   const [currentTab, setCurrentTab] = useState("current");
   const [showForm, setShowForm] = useState(false);
@@ -38,9 +44,35 @@ export default function Announcement() {
   });
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
+ 
   const formRef = useRef<HTMLDivElement>(null);
-
+ 
+ 
+  useEffect(() => {
+    async function fetchAnnouncements() {
+      try {
+        const storedChurchId = localStorage.getItem('storedChurchId');
+        if (!storedChurchId) {
+          throw new Error("No stored churchId found in local storage.");
+        }
+        const querySnapshot = await getDocs(
+          query(
+            collection(db, 'announcement'),
+            where('churchId', '==', storedChurchId)
+          )
+        );
+        const fetchedAnnouncements: Announcement[] = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        } as Announcement));
+        setAnnouncements(fetchedAnnouncements);
+      } catch (error) {
+        console.error("Error fetching announcements:", error);
+      }
+    }
+    fetchAnnouncements();
+  }, []);
+ 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (formRef.current && !formRef.current.contains(event.target as Node)) {
@@ -52,52 +84,18 @@ export default function Announcement() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
+ 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setNewAnnouncement((prev) => ({ ...prev, [name]: value }));
   };
-
+ 
   const handleSwitchChange = (checked: boolean) => {
     setNewAnnouncement((prev) => ({ ...prev, isPinned: checked }));
   };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const submittedAnnouncement = {
-      ...newAnnouncement,
-      date: new Date(
-        `${newAnnouncement.date}T${newAnnouncement.time || "00:00"}`
-      ).toISOString(),
-    };
-
-    if (editingIndex !== null) {
-      const updatedAnnouncements = [...announcements];
-      updatedAnnouncements[editingIndex] = submittedAnnouncement;
-      setAnnouncements(updatedAnnouncements);
-      setEditingIndex(null);
-    } else {
-      setAnnouncements([...announcements, submittedAnnouncement]);
-    }
-    setShowForm(false);
-    setNewAnnouncement({
-      title: "",
-      description: "",
-      date: "",
-      time: "",
-      isPinned: false,
-      image: null,
-    });
-  };
-
-  const handleEdit = (index: number) => {
-    setEditingIndex(index);
-    setNewAnnouncement(announcements[index]);
-    setShowForm(true);
-  };
-
+ 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -111,16 +109,99 @@ export default function Announcement() {
       reader.readAsDataURL(file);
     }
   };
-
+ 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const submittedAnnouncement = {
+      ...newAnnouncement,
+      date: new Date(
+        `${newAnnouncement.date}T${newAnnouncement.time || "00:00"}`
+      ).toISOString(),
+    };
+ 
+    try {
+      if (editingIndex !== null && announcements[editingIndex]?.id) {
+        // Update existing announcement
+        const announcementRef = doc(db, 'announcement', announcements[editingIndex].id);
+        await updateDoc(announcementRef, submittedAnnouncement);
+      } else {
+        // Create new announcement
+        const storedChurchId = localStorage.getItem('storedChurchId');
+        if (!storedChurchId) {
+          throw new Error("No stored churchId found in local storage.");
+        }
+        await addDoc(collection(db, 'announcement'), {
+          ...submittedAnnouncement,
+          churchId: storedChurchId,
+        });
+      }
+ 
+    } catch (error) {
+      console.error("Error saving announcement:", error);
+    }
+    setShowForm(false);
+    setNewAnnouncement({
+      title: "",
+      description: "",
+      date: "",
+      time: "",
+      isPinned: false,
+      image: null,
+    });
+  };
+ 
+  const handleEdit = (index: number) => {
+    setEditingIndex(index);
+    setNewAnnouncement(announcements[index]);
+    setShowForm(true);
+  };
+ 
+  const handleDelete = (index: number) => {
+    setDeleteIndex(index);
+    setIsDeleteModalOpen(true);
+  };
+ 
+  const confirmDelete = async () => {
+    if (deleteIndex !== null && announcements[deleteIndex]?.id) {
+      try {
+        const announcementId = announcements[deleteIndex].id;
+        await deleteDoc(doc(db, "announcement", announcementId));
+ 
+        // Refresh announcements
+        const storedChurchId = localStorage.getItem('storedChurchId');
+        if (!storedChurchId) {
+          throw new Error("No stored churchId found in local storage.");
+        }
+        const querySnapshot = await getDocs(
+          query(
+            collection(db, 'announcement'),
+            where('churchId', '==', storedChurchId)
+          )
+        );
+        const fetchedAnnouncements: Announcement[] = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        } as Announcement));
+        setAnnouncements(fetchedAnnouncements);
+ 
+      } catch (error) {
+        console.error("Error deleting announcement:", error);
+      }
+      setDeleteIndex(null);
+      setIsDeleteModalOpen(false);
+    }
+  };
+ 
+ 
   const categorizeAnnouncements = (): Record<string, Announcement[]> => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+ 
     return announcements.reduce(
       (acc: Record<string, Announcement[]>, announcement) => {
         const announcementDate = new Date(announcement.date);
         announcementDate.setHours(0, 0, 0, 0);
-
+ 
         if (announcementDate.getTime() === today.getTime()) {
           acc.current.push(announcement);
         } else if (announcementDate < today) {
@@ -133,20 +214,6 @@ export default function Announcement() {
       { current: [], upcoming: [], previous: [] }
     );
   };
-
-  const handleDelete = (index: number) => {
-    setDeleteIndex(index);
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (deleteIndex !== null) {
-      setAnnouncements((prev) => prev.filter((_, i) => i !== deleteIndex));
-      setDeleteIndex(null);
-      setIsDeleteModalOpen(false);
-    }
-  };
-
   return (
     <>
       {/* announcement header */}
@@ -184,7 +251,7 @@ export default function Announcement() {
               Current
             </p>
           </div>
-
+ 
           <div
             className={`${
               currentTab === "upcoming"
@@ -197,7 +264,7 @@ export default function Announcement() {
               Upcoming
             </p>
           </div>
-
+ 
           <div
             className={`${
               currentTab === "previous"
@@ -212,7 +279,7 @@ export default function Announcement() {
           </div>
         </div>
         {/* card content */}
-
+ 
         <div className="mt-6">
           {Object.entries(categorizeAnnouncements()).map(
             ([tabName, tabAnnouncements]) => (
@@ -225,9 +292,11 @@ export default function Announcement() {
                     key={index}
                     className="flex items-stretch mb-6 border rounded-lg overflow-hidden shadow-sm"
                   >
-                    <img
+                    <Image
                       src={announcement.image || ""}
                       alt={announcement.title}
+                      width={50}
+                      height={40}
                       className="w-40 h-40 object-cover"
                     />
                     <div className="flex-grow flex items-center px-4 border-l border-r">
@@ -271,7 +340,7 @@ export default function Announcement() {
           )}
         </div>
       </div>
-
+ 
       {/* Announcement form */}
       {showForm && (
         <div
@@ -348,10 +417,12 @@ export default function Announcement() {
                   className="w-full p-2 border rounded"
                 />
                 {newAnnouncement.image && (
-                  <img
+                  <Image
                     src={newAnnouncement.image}
                     alt="Preview"
-                    className="mt-2 w-full h-auto object-cover"
+                    width={50}
+                    height={40}
+                    className="mt-2 w-20 h-20 object-cover"
                   />
                 )}
               </div>
@@ -371,37 +442,38 @@ export default function Announcement() {
                   Cancel
                 </Button>
                 <Button type="submit" className="bg-[#280559] text-white">
-                  {editingIndex !== null ? "Save Changes" : "Create Announcement"}
-                </Button>
-              </div>
-            </form>
+                    {editingIndex !== null ? "Save Changes" : "Create Announcement"}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Announcement</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this announcement? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={confirmDelete} className="bg-red-600 text-white">
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
+        )}
+ 
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Announcement</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this announcement? This action
+                cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={confirmDelete} className="bg-red-600 text-white">
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+ 
