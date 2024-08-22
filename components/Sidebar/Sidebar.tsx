@@ -24,7 +24,7 @@ import LogoutPopup from "../../components/logoutpopup/logout";
  
  
 const menuItems = [
-  { name: "Dashboard", href: "/", icon: IoHome },
+  { name: "Dashboard", href: "/dashboard", icon: IoHome },
   { name: "Users", href: "/users", icon: FaUsers },
   { name: "Events", href: "/events", icon: BsCalendarEventFill },
   { name: "Media", href: "/media", icon: FaVideo },
