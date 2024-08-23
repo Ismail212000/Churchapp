@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import Dashboard from "@/components/dashboard/dashboard";
 import Graph from "@/components/graph/dashgraph";
