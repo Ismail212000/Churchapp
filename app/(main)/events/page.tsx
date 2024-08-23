@@ -17,7 +17,7 @@ import {
   CardFooter,
   CardTitle,
 } from "@/components/ui/card";
-import { saveEvent, fetchAllEvents } from "@/components/actions/events"; // Ensure these functions are implemented
+import { saveEvent, fetchAllEvents } from "@/components/actions/events";
 import Image from "next/image";
 interface AgendaItem {
   title: string;
@@ -40,7 +40,9 @@ export default function Events() {
   const [showForm, setShowForm] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [currentTab, setCurrentTab] = useState("current"); // Default to current events
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [currentTab, setCurrentTab] = useState("current");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState<Event>({
@@ -84,38 +86,38 @@ export default function Events() {
 
     fetchEvents();
   }, []);
-  
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-  
+
     try {
       // Retrieve churchId from local storage
       const churchId = localStorage.getItem("storedChurchId");
-  
+
       // Construct the event to save, including the churchId
       const eventToSave = {
         ...newEvent,
         id: editingEvent ? editingEvent.id : Date.now(),
         churchId: churchId || "", // Add churchId to the event data
       };
-  
+
       if (editingEvent) {
         await saveEvent(eventToSave, editingEvent.id.toString());
       } else {
         await saveEvent(eventToSave);
       }
-  
+
       setEvents((prev) => {
         return editingEvent
           ? prev.map((event) =>
-              event.id === editingEvent.id ? eventToSave : event
-            )
+            event.id === editingEvent.id ? eventToSave : event
+          )
           : [...prev, eventToSave];
       });
-  
+
       setNewEvent({
         id: 0,
         title: "",
@@ -125,7 +127,7 @@ export default function Events() {
         isPaidEvent: false,
         banner: null,
         repeat: false,
-        churchId: "", // Reset the churchId in the form data
+        churchId: "",
       });
       setShowForm(false);
       setEditingEvent(null);
@@ -143,8 +145,23 @@ export default function Events() {
     setShowForm(true);
   };
 
-  const handleDelete = (id: number) => {
-    setEvents((prev) => prev.filter((event) => event.id !== id));
+  // const handleDelete = (id: number) => {
+  //   setEvents((prev) => prev.filter((event) => event.id !== id));
+  // };
+  const handleDeleteClick = (id: number) => {
+    setSelectedEventId(id);
+    setIsPopupOpen(true);
+  };
+  const handleClosePopup = () => {
+    setIsPopupOpen(false);
+    setSelectedEventId(null);
+  };
+
+  const handleConfirmDelete = () => {
+    // Perform delete action here
+    console.log(`Deleting event with ID: ${selectedEventId}`);
+    // After deletion, close the popup
+    handleClosePopup();
   };
 
   const handleInputChange = (
@@ -180,17 +197,21 @@ export default function Events() {
     setNewEvent((prev) => ({ ...prev, [field]: checked }));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewEvent((prev) => ({ ...prev, banner: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setError("Only image files are allowed.");
+        return;
+      }
+
+      setError(null);
+      // Handle the image file (e.g., upload to server or preview)
+      console.log("Selected file:", file);
     }
   };
-  
+
 
   const isCurrentEvent = (eventDate: string) => {
     const today = new Date();
@@ -235,7 +256,7 @@ export default function Events() {
           <Button
             className="bg-[#280559] text-white flex gap-2"
             onClick={() => {
-               const storedChurchId = localStorage.getItem('storedChurchId') || "";
+              const storedChurchId = localStorage.getItem('storedChurchId') || "";
               setShowForm(true);
               setEditingEvent(null);
               setNewEvent({
@@ -262,11 +283,10 @@ export default function Events() {
         {/* active tabs */}
         <div className="flex justify-start items-center mb-4">
           <div
-            className={`${
-              currentTab === "current"
+            className={`${currentTab === "current"
                 ? "border-b-2 text-[#280559] border-[#280559]"
                 : "text-[#92929D]"
-            } transition-all ease-in-out duration-500`}
+              } transition-all ease-in-out duration-500`}
             onClick={() => setCurrentTab("current")}
           >
             <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
@@ -275,11 +295,10 @@ export default function Events() {
           </div>
 
           <div
-            className={`${
-              currentTab === "upcoming"
+            className={`${currentTab === "upcoming"
                 ? "border-b-2 rounded text-[#280559] border-[#280559]"
                 : " text-[#92929D]"
-            }  transition-all ease-in-out duration-500 ml-4`}
+              }  transition-all ease-in-out duration-500 ml-4`}
             onClick={() => setCurrentTab("upcoming")}
           >
             <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
@@ -288,11 +307,10 @@ export default function Events() {
           </div>
 
           <div
-            className={`${
-              currentTab === "previous"
+            className={`${currentTab === "previous"
                 ? "border-b-2 rounded text-[#280559] border-[#280559]"
                 : "text-[#92929D]"
-            } transition-all ease-in-out duration-500 ml-4`}
+              } transition-all ease-in-out duration-500 ml-4`}
             onClick={() => setCurrentTab("previous")}
           >
             <p className="sm:px-4 lg:px-8 sm:text-base lg:text-md font-bold cursor-pointer mt-10">
@@ -301,58 +319,87 @@ export default function Events() {
           </div>
         </div>
         {/* Event cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 justify-items-center">
-  {filterEvents(events, currentTab).map((event) => {
-    // Assuming event.date is a Date object or a parsable date string
-    const isUpcomingEvent = new Date(event.date) > new Date();
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 justify-items-center">
+          {filterEvents(events, currentTab).map((event) => {
+            // Assuming event.date is a Date object or a parsable date string
+            const isUpcomingEvent = new Date(event.date) > new Date();
 
-    return (
-      <Card key={event.id} className="w-full max-w-sm">
-        {event.banner && (
-          <Image
-            src={event.banner}
-            alt={event.title}
-            width={50}
-            height={40}
-            className="w-full h-40 object-cover rounded-t-lg"
-          />
-        )}
-        <CardHeader>
-          <CardTitle>{event.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>{event.description}</p>
-          {event.isPaidEvent && (
-            <p className="mt-2 text-green-600">Paid Event</p>
-          )}
-          {event.repeat && (
-            <p className="mt-2 text-blue-600">Repeating Event</p>
-          )}
-        </CardContent>
-        <CardFooter className="justify-center gap-2">
-          {isUpcomingEvent && (
-            <Button
-              onClick={() => handleEdit(event)}
-              size="sm"
-              variant="outline"
-              className="bg-[#047857] text-white"
-            >
-              <FiEdit className="mr-2" />
-              Edit
-            </Button>
-          )}
-          <Button
-            onClick={() => handleDelete(event.id)}
-            size="sm"
-            variant="outline"
-          >
-            <FiTrash2 className="text-[#047857]" />
-          </Button>
-        </CardFooter>
-      </Card>
-    );
-  })}
-</div>
+            return (
+              <Card key={event.id} className="w-full max-w-xs">
+                {event.banner && (
+                  <Image
+                    src={event.banner}
+                    alt={event.title}
+                    width={30}
+                    height={20}
+                    className="w-full h-30 object-cover rounded-t-lg"
+                  />
+                )}
+                <CardHeader>
+                  <CardTitle>{event.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>{event.description}</p>
+                  {event.isPaidEvent && (
+                    <p className="mt-2 text-green-600">Paid Event</p>
+                  )}
+                  {event.repeat && (
+                    <p className="mt-2 text-blue-600">Repeating Event</p>
+                  )}
+                </CardContent>
+                <CardFooter className="justify-center gap-2">
+                  {isUpcomingEvent && (
+                    <Button
+                      onClick={() => handleEdit(event)}
+                      size="sm"
+                      variant="outline"
+                      className="bg-[#047857] text-white"
+                    >
+                      <FiEdit className="mr-2" />
+                      Edit
+                    </Button>
+                  )}
+                  <div>
+                    <Button
+                      onClick={() => handleDeleteClick(event.id)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <FiTrash2 className="text-[#047857]" />
+                    </Button>
+
+                    {isPopupOpen && (
+                      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                        <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
+                          <div className="text-lg font-semibold mb-4">
+                            <div>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="18em" height="3em" viewBox="0 0 24 24">
+                                <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12h-9.5m7.5 3l3-3l-3-3m-5-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5a2 2 0 0 0 2-2v-1" />
+                              </svg>
+                            </div>
+                            <p className="text-gray-400 font-normal">Are you sure you want to Delete now?</p>
+                          </div>
+                          <div className="flex justify-center space-x-4">
+                            <button
+                              onClick={handleClosePopup}
+                              className="bg-[#23D81E] text-gray-700 px-4 py-2 rounded hover:bg-green-700">
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleConfirmDelete}
+                              className="bg-black text-white px-4 py-2 rounded hover:bg-black">
+                              Yes, Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
 
 
         {/* Side form */}
@@ -447,27 +494,25 @@ export default function Events() {
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">
-                  Upload Banner
-                </label>
+                <label className="block text-sm font-medium mb-1">Upload Banner</label>
                 <div className="flex items-center justify-center w-full">
                   <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       <FiUpload className="w-8 h-8 mb-4 text-gray-500" />
                       <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span>{" "}
-                        or drag and drop
+                        <span className="font-semibold">Click to upload</span> or drag and drop
                       </p>
                     </div>
                     <input
-                  type="file"
-                  id="events"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="mb-2"
-                />
+                      type="file"
+                      id="events"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
                   </label>
                 </div>
+                {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
               </div>
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-sm font-medium">Repeat</span>

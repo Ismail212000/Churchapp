@@ -14,7 +14,7 @@ import { MdOutlineArrowCircleDown } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { v4 as uuidv4 } from "uuid";
 import Image from "next/image";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, User } from "firebase/auth";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 
@@ -145,6 +145,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     churchId: "",
   });
   
+  const [error, setError] = useState<string | null>(null);
 
   const [searchValue, setSearchValue] = useState("");
   const [filterApplied, setFilterApplied] = useState(false); // New state for filter
@@ -244,6 +245,82 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
   };
   
 
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     const { familyHeadName, contact, email, password, address, members, churchId } = formData;
+  
+//     // Validate required fields
+//     if (!familyHeadName || !contact || !email || !password || !address || members.some(member => !member.name || !member.relationship || !member.gender || !member.age)) {
+//       alert("Please complete all required fields.");
+//       return;
+//     }
+  
+//     try {
+//       if (!formData.id) {
+//         formData.id = uuidv4();
+//       }
+  
+//       // Create user with email and password
+//       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+//       const user = userCredential.user;
+//       console.log('User created:', userCredential);
+  
+//       // Send verification email with additional information
+//   // Send verification email with additional information
+// // Send verification email with additional information
+// try {
+//   await sendEmailVerification(user, {
+//     url: 'https://your-app.com/verify-email',
+//     handleCodeInApp: true,
+//     emailBody: `
+//       Dear user,
+      
+//       Thank you for creating an account with our church. Here are your account details:
+      
+//       Church ID: ${churchId}
+//       Password: ${password}
+//       Email: ${email}
+
+//       To verify your email, please click on the following link:
+//       ${await user.getEmailVerificationURL()}
+      
+//       After verifying your email, you can change your password by visiting the 'Change Password' section of our app.
+      
+//       Best regards,
+//       Church Admin
+//     `
+//   });
+//   console.log('Verification email sent successfully');
+//   alert('Verification email sent successfully. Please check your inbox.');
+// } catch (verificationError: unknown) {
+//   if (verificationError instanceof Error) {
+//     console.error('Failed to send verification email:', verificationError.message);
+//     alert(`Failed to send verification email. Error: ${verificationError.message}`);
+//   } else {
+//     console.error('Failed to send verification email:', verificationError);
+//     alert('Failed to send verification email. Please try again later.');
+//   }
+// }      const userData: UserData = {
+//         ...formData,
+//         id: user.uid,
+//       };
+  
+//       // Save user data to Firestore
+//       await setDoc(doc(db, "users", user.uid), userData);
+//       setShowForm(false);
+//       const updatedUsers = await fetchUsers();
+//       setUsers(updatedUsers);
+  
+//     } catch (error: unknown) {
+//       if (error instanceof Error) {
+//         console.error('Error submitting form:', error.message);
+//         alert(`An error occurred while saving the user. Error: ${error.message}`);
+//       } else {
+//         console.error('An unexpected error occurred:', error);
+//         alert('An error occurred while saving the user.');
+//       }
+//     }
+//   };
 
   
   
@@ -261,11 +338,19 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
 
+    // Allow only numeric input
+    if (name === "contact") {
+      if (/^[0-9]*$/.test(value)) {
+        setFormData((prevData) => ({ ...prevData, [name]: value }));
+        setError(null);
+      } else {
+        setError("Please enter a valid contact number.");
+      }
+    }
+  };
   // const handleSelectChange = (index: number, field: string, value: string) => {
   //   setFormData(prev => {
   //     const updatedMembers = [...prev.members];
@@ -599,4 +684,7 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     </>
   );
   
+}
+function getVerificationLink(user: User, arg1: string) {
+  throw new Error("Function not implemented.");
 }

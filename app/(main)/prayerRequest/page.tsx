@@ -10,19 +10,21 @@ import {
 } from "@/components/ui/table";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { collection, getDocs, query, where, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, updateDoc, doc, deleteDoc, addDoc, Firestore } from "firebase/firestore";
 import { db } from "@/firebase";
 import { DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@radix-ui/react-dialog";
 
 type PrayerRequestType = {
+  //userId(db: Firestore, arg1: string, userId: any): unknown;
   id: string;
-  date: string;
+  prayerRequestDate: string;
   name: string;
   category: string;
   contactNumber: string;
   privacy: string;
   status: string;
+  userId: string;
 };
 
 export default function PrayerRequest() {
@@ -31,6 +33,7 @@ export default function PrayerRequest() {
   const [selectedRequest, setSelectedRequest] = useState<PrayerRequestType | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [requestsPerPage] = useState(12);
+  const userId = "userId";
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -71,10 +74,18 @@ export default function PrayerRequest() {
     setDialogOpen(true);
   };
 
-  const handleStatusChange = async (request: PrayerRequestType, newStatus: string) => {
+  const handleStatusChange = async (request: PrayerRequestType, newStatus: string, userId: string) => {
     if (request) {
+      // Update the status in the prayerRequests collection
       const requestDoc = doc(db, "prayerRequests", request.id);
       await updateDoc(requestDoc, { status: newStatus });
+
+      // Update the status in the users collection
+      const userDoc = doc(db, "users", request.userId);
+      await updateDoc(userDoc, { status: newStatus });
+
+      // Store the status update in the notifications collection
+      await updateStatusAndStoreNotification(newStatus, request.id, request.userId);
 
       // Update the local state
       setCurrentRequests(prevRequests =>
@@ -130,7 +141,7 @@ export default function PrayerRequest() {
                   <input type="checkbox" />
                 </TableCell>
                 <TableCell className="px-2 py-3">{request.id}</TableCell>
-                <TableCell className="px-2 py-3">{request.date}</TableCell>
+                <TableCell className="px-2 py-3">{request.prayerRequestDate}</TableCell>
                 <TableCell className="px-2 py-3">{request.name}</TableCell>
                 <TableCell className="px-2 py-3 hidden md:table-cell">
                   {request.category}
@@ -158,31 +169,18 @@ export default function PrayerRequest() {
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-24 p-1 shadow-md">
-                    {/* <button
-                        onClick={() => handleStatusChange(request, "New")}
-                        className="text-blue-500 hover:bg-blue-100 px-2 py-1 text-sm w-full text-center rounded mb-1"
-                      >
-                       New
-                      </button> */}
                       <button
-                        onClick={() => handleStatusChange(request, "Pending")}
+                        onClick={() => handleStatusChange(request, "Pending", userId)}
                         className="text-yellow-500 hover:bg-yellow-100 px-2 py-1 text-sm w-full text-center rounded mb-1"
                       >
                         Pending
                       </button>
                       <button
-                        onClick={() => handleStatusChange(request, "Completed")}
+                        onClick={() => handleStatusChange(request, "Completed", userId)}
                         className="text-green-500 hover:bg-green-100 px-2 py-1 text-sm w-full text-center rounded mb-1"
                       >
                         Completed
                       </button>
-                      
-                      {/* <button
-                        onClick={() => handleDelete(request)}
-                        className="text-red-500 hover:bg-red-100 px-2 py-1 text-sm w-full text-center rounded mt-1"
-                      >
-                        Delete
-                      </button> */}
                     </PopoverContent>
                   </Popover>
                 </TableCell>
@@ -214,7 +212,7 @@ export default function PrayerRequest() {
               {selectedRequest && (
                 <div>
                   <p><strong>Request ID:</strong> {selectedRequest.id}</p>
-                  <p><strong>Date:</strong> {selectedRequest.date}</p>
+                  <p><strong>Date:</strong> {selectedRequest.prayerRequestDate}</p>
                   <p><strong>Name:</strong> {selectedRequest.name}</p>
                   <p><strong>Category:</strong> {selectedRequest.category}</p>
                   <p><strong>Contact:</strong> {selectedRequest.contactNumber}</p>
@@ -233,14 +231,22 @@ export default function PrayerRequest() {
 
 const getStatusStyles = (status: string) => {
   switch (status) {
-    // case "New":
-    //   return "bg-blue-100 text-blue-800";
     case "Pending":
       return "bg-yellow-100 text-yellow-800";
     case "Completed":
       return "bg-green-100 text-green-800";
-   
     default:
       return "bg-gray-100 text-gray-800";
   }
+};
+
+const updateStatusAndStoreNotification = async (status: string, requestId: string, userId: string) => {
+  const notificationData = {
+    status,
+    requestId,
+    userId,  // Include userId in the notification data
+    createdAt: new Date(),
+  };
+
+  await addDoc(collection(db, "notifications"), notificationData);
 };

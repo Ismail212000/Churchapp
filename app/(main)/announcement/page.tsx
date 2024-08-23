@@ -236,7 +236,7 @@ export default function Announcement() {
         </div>
       </div>
       {/* main screen */}
-      <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-screen bg-white rounded-3xl">
+      <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-[90%] bg-white rounded-3xl">
         {/* active tabs */}
         <div className="flex justify-start items-center mb-4">
           <div
@@ -344,7 +344,7 @@ export default function Announcement() {
       {/* Announcement form */}
       {showForm && (
         <div
-          className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+          className="fixed top-0 right-0 h-full w-full md:w-96 bg-white p-4  overflow-y-auto"
           onClick={() => setShowForm(false)}
         >
           <div

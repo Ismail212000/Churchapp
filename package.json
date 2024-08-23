@@ -22,6 +22,7 @@
     "@radix-ui/react-switch": "^1.1.0",
     "@tanstack/react-query": "^5.51.23",
     "@tanstack/react-table": "8.20.1",
+    "@types/chart.js": "^2.9.41",
     "@types/next": "^9.0.0",
     "@types/react-query": "^1.2.9",
     "@types/react-table": "^7.7.20",
