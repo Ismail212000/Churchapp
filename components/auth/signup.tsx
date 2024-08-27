@@ -1,14 +1,16 @@
 "use client";
 import React, { useState, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AiFillEye, AiFillEyeInvisible } from 'react-icons/ai';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, query, where, getDocs, collection, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import QRCode from 'qrcode';
+import { auth, db, storage } from '../../firebase'; // Ensure you have configured storage in your firebase.js file
 
 interface SignUpFormData {
   churchId: string;
@@ -16,7 +18,6 @@ interface SignUpFormData {
   email: string;
   password: string;
   name: string;
-  // role: string;
 }
 
 const SignUpForm = () => {
@@ -27,7 +28,6 @@ const SignUpForm = () => {
     email: '',
     password: '',
     name: '',
-    // role: '',
   });
   const [error, setError] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
@@ -61,10 +61,21 @@ const SignUpForm = () => {
       } else {
         // If the church doesn't exist, generate a new ID and create a new church document
         churchId = churchId || Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Generate QR Code
+        const qrCodeData = await QRCode.toDataURL(churchId);
+        const qrCodeBlob = await fetch(qrCodeData).then((res) => res.blob());
+
+        // Upload QR Code to Firebase Storage
+        const storageRef = ref(storage, `qrcodes/${churchId}.png`);
+        await uploadBytes(storageRef, qrCodeBlob);
+        const qrCodeURL = await getDownloadURL(storageRef);
+
+        // Create the church document with QR Code URL
         await setDoc(doc(db, 'churches', churchId), {
           churchId: churchId,
           churchName: formData.churchName,
-
+          qrCodeURL: qrCodeURL,
         });
       }
 
@@ -72,35 +83,32 @@ const SignUpForm = () => {
       const { user } = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
 
       // Store the user under the church's subcollection
-      const userRef = collection(db,'admin');
+      const userRef = collection(db, 'admin');
       await setDoc(doc(userRef, user.uid), {
         churchId: churchId,
         churchName: formData.churchName,
         email: formData.email,
         name: formData.name,
-        // role: formData.role,
       });
-      // Generate a token (you can use the user's UID as a simple token)
-    const token = user.uid;
-    if(token){
-      await updateDoc(doc(db, 'churches', churchId), {
-        UserId:token
-  
-      });
-    }
 
-    // // Set the token in localStorage
-    // localStorage.setItem("token", token);
-    // / Store user details in localStorage
-    const userDetails = {
-      churchId,
-      churchName: formData.churchName,
-      email: formData.email,
-      name: formData.name,
-      token:token
-      // Add other relevant details if needed
-    };
-    localStorage.setItem("userDetails", JSON.stringify(userDetails));
+      // Generate a token (you can use the user's UID as a simple token)
+      const token = user.uid;
+      if (token) {
+        await updateDoc(doc(db, 'churches', churchId), {
+          UserId: token
+        });
+      }
+
+      // Store user details in localStorage
+      const userDetails = {
+        churchId,
+        churchName: formData.churchName,
+        email: formData.email,
+        name: formData.name,
+        token: token
+      };
+      localStorage.setItem("userDetails", JSON.stringify(userDetails));
+
       // Redirect to the sign-in page after successful sign-up
       router.push('/auth/signin');
     } catch (err) {
@@ -112,20 +120,9 @@ const SignUpForm = () => {
     <Card>
       <CardHeader className="text-center">
         <CardTitle>Sign Up</CardTitle>
-        {/* <CardDescription>Create a new account for your church.</CardDescription> */}
       </CardHeader>
       <CardContent className="space-y-1">
         {error && <p className="text-red-500 text-center">{error}</p>}
-        {/* <div className="space-y-0">
-          <Label htmlFor="church-id">Church ID (optional)</Label>
-          <Input
-            id="church-id"
-            name="churchId"
-            value={formData.churchId}
-            onChange={handleChange}
-            placeholder="Enter church ID or leave blank for auto-generation"
-          />
-        </div> */}
         <div className="space-y-0">
           <Label htmlFor="church-name">Church Name</Label>
           <Input
@@ -146,16 +143,6 @@ const SignUpForm = () => {
             placeholder="Enter your name"
           />
         </div>
-        {/* <div className="space-y-0">
-          <Label htmlFor="role">Role</Label>
-          <Input
-            id="role"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            placeholder="Enter your role (e.g.,Admin ,Pastor)"
-          />
-        </div> */}
         <div className="space-y-0">
           <Label htmlFor="email">Email</Label>
           <Input

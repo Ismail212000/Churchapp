@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 export const saveEvent = async (event: any, eventId?: string) => {
   const eventRef = eventId ? doc(db, 'events', eventId) : doc(collection(db, 'events'));
   await setDoc(eventRef, event);
+  console.log("Passed Events:",event)
 };
 
 // Fetch an event from Firestore

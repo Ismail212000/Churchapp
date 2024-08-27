@@ -102,3 +102,6 @@
 .donation-modal::-webkit-scrollbar {
   display: none;
 }
+.react-calendar{
+  width: 100% !important;
+}
