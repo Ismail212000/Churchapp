@@ -39,7 +39,7 @@ const SignInForm = () => {
     try {
       // Sign in the user with email and password
     const { user } = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      router.push('/');
+      router.push('/dashboard');
       // Generate a token (using the user's UID as a simple token)
     const token = user.uid;
 

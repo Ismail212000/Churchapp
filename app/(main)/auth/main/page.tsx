@@ -18,7 +18,7 @@ const MainComponent = () => {
         <div className="w-1/2 space-y-4">
           <div className="text-center">
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              {isLogin ? 'Sign In' : 'Create Account'}
+              {isLogin ? 'Login Account' : 'Create Account'}
             </h1>
           </div>
           {isLogin ? <SignInForm /> : <SignUpForm />}
