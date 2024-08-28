@@ -30,7 +30,7 @@ export default function RootLayout({
           {showMain ? (
             <>
               <Sidebar />
-              <main className="flex-1 md:ml-64 p-4 mt-16 md:mt-0 bg-slate-100 h-screen">
+              <main className="flex-1 md:ml-64 p-4 mt-16 md:mt-0 bg-slate-100 min-h-screen max-h-full">
                 {children}
               </main>
             </>

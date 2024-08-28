@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/card";
 import { saveEvent, fetchAllEvents } from "@/components/actions/events";
 import Image from "next/image";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 interface AgendaItem {
   title: string;
   time: string;
@@ -56,6 +58,7 @@ export default function Events() {
     repeat: false,
     churchId: '',
   });
+  //const [formData, setFormData] = useState<{ profilePhoto?: string }>({});
 
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -197,20 +200,53 @@ export default function Events() {
     setNewEvent((prev) => ({ ...prev, [field]: checked }));
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        setError("Only image files are allowed.");
-        return;
-      }
-
-      setError(null);
-      // Handle the image file (e.g., upload to server or preview)
-      console.log("Selected file:", file);
+      // Get a reference to the storage service and a reference to the file path
+      const storage = getStorage();
+      const storageRef = ref(storage, `events/${file.name}`);
+  
+      // Upload the file
+      const uploadTask = uploadBytesResumable(storageRef, file);
+  
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          // Optionally, you can handle the upload progress here
+          console.log(`Upload is ${Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)}% done`);
+        },
+        (error) => {
+          // Handle unsuccessful uploads
+          console.error("Upload failed:", error);
+        },
+        () => {
+          // Handle successful uploads on complete
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            // Update form data with the download URL of the profile photo
+            setNewEvent((prev) => ({
+              ...prev,
+              banner: downloadURL,
+            }));
+          });
+        }
+      );
     }
   };
+  // const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = event.target.files?.[0];
+  //   if (file) {
+  //     // Validate file type
+  //     if (!file.type.startsWith("image/")) {
+  //       setError("Only image files are allowed.");
+  //       return;
+  //     }
+
+  //     setError(null);
+  //     // Handle the image file (e.g., upload to server or preview)
+  //     console.log("Selected file:", file);
+  //   }
+  // };
 
 
   const isCurrentEvent = (eventDate: string) => {
@@ -243,6 +279,7 @@ export default function Events() {
         return events;
     }
   };
+  console.log("new Events:",newEvent)
   return (
     <>
       {/* event header */}
@@ -330,8 +367,8 @@ export default function Events() {
                   <Image
                     src={event.banner}
                     alt={event.title}
-                    width={30}
-                    height={20}
+                    width={1200}
+                    height={1200}
                     className="w-full h-30 object-cover rounded-t-lg"
                   />
                 )}
