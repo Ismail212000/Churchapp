@@ -32,6 +32,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "css-loader": "^7.1.2",
+    "date-fns": "^3.6.0",
     "emailjs-com": "^3.2.0",
     "firebase": "^10.12.5",
     "framer-motion": "11.3.24",
