@@ -1,14 +1,15 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { FiEdit, FiTrash2, FiX } from "react-icons/fi";
+import { FiEdit, FiPlusCircle, FiTrash2, FiX } from "react-icons/fi";
 import { Card, CardHeader, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import Image from "next/image";
 import AddMedia from "@/components/actions/media";
 import { db, storage } from "../../../firebase"; // Adjust import based on your Firebase setup
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import CustomButton from "@/components/customebutton";
 
 interface Media {
   id: string;
@@ -38,8 +39,6 @@ export default function Media() {
     type: currentTab,
   });
 
-  const formRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const fetchMedia = async () => {
       try {
@@ -50,10 +49,10 @@ export default function Media() {
 
         const mediaCollection = collection(db, "media");
         const mediaQuery = query(
-          mediaCollection, 
+          mediaCollection,
           where("type", "==", currentTab),
           where("churchId", "==", storedChurchId)
-        );        
+        );
         const mediaSnapshot = await getDocs(mediaQuery);
         const mediaList = mediaSnapshot.docs.map(doc => ({
           id: doc.id,
@@ -68,20 +67,6 @@ export default function Media() {
     fetchMedia();
   }, [currentTab]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (formRef.current && !formRef.current.contains(event.target as Node)) {
-        setShowForm(false);
-        setEditingMedia(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, mediaType: "banner" | "audio" | "video" | "blog") => {
     const file = e.target.files?.[0];
     if (file) {
@@ -89,13 +74,13 @@ export default function Media() {
         const fileExtension = file.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExtension}`;
         const storageRef = ref(storage, `media/${mediaType}/${fileName}`);
-        
+
         // Upload the file
         const snapshot = await uploadBytes(storageRef, file);
-        
+
         // Get the download URL
         const downloadURL = await getDownloadURL(snapshot.ref);
-        
+
         // Update the media state with the new URL
         setNewMedia((prev) => ({ ...prev, [mediaType]: downloadURL }));
       } catch (error) {
@@ -104,7 +89,6 @@ export default function Media() {
       }
     }
   };
-  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,24 +102,40 @@ export default function Media() {
         }
         const mediaDocRef = doc(db, 'media', editingMedia.id);
         await updateDoc(mediaDocRef, mediaToSave);
+        console.log("Updated document with ID:", editingMedia.id);
       } else {
         const storedChurchId = localStorage.getItem('storedChurchId');
         if (!storedChurchId) {
           throw new Error("No stored churchId found in local storage.");
         }
+        // Add a new document with an auto-generated ID
         const docRef = await addDoc(collection(db, 'media'), {
           ...mediaToSave,
           churchId: storedChurchId,
         });
+
+        // Extract the generated UID from the document reference
+        const uid = docRef.id;
+
+        // Update the document with the UID
+        await updateDoc(docRef, { id: uid });
+
+        console.log("New document created with ID:", docRef.id);
+
+        // Update the mediaToSave object with the generated ID
+        const mediaWithId = {
+          ...mediaToSave,
+          id: docRef.id
+        };
+
+        // Update the state with the new media item, including the generated ID
         setMedia((prev) => [
           ...prev,
-          {
-            ...mediaToSave,
-            id: docRef.id,
-          },
+          mediaWithId,
         ]);
       }
 
+      // Reset the form
       setNewMedia({
         id: "",
         title: "",
@@ -193,25 +193,24 @@ export default function Media() {
           <h1 className="text-[#280559] font-bold text-xl sm:text-lg">Media</h1>
           <p className="text-[#9898A3] text-xs">View all media here</p>
         </div>
+        <CustomButton
+          className="bg-[#280559] text-white flex gap-2"
+          onClick={() => {
+            setShowForm(true);
+            setEditingMedia(null);
+          }}
+        >
+          <FiPlusCircle className="mb-[3px]" />
+          <p>Create New Media</p>
+        </CustomButton>
       </div>
 
       <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8 h-full bg-white rounded-3xl">
-
-        <AddMedia 
+        <AddMedia
           className="text-white flex gap-2"
           onClick={() => {
             setShowForm(true);
             setEditingMedia(null);
-            setNewMedia({
-              id: "",
-              title: "",
-              description: "",
-              banner: null,
-              audio: null,
-              video: null,
-              blog: null,
-              type: currentTab,
-            });
           }}
           onSetHandleTab={handleTabChange}
         />
@@ -254,30 +253,20 @@ export default function Media() {
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline">
-                      <FiTrash2 className="text-[#047857]" />
+                      <FiTrash2 className="text-[#DC2626]" />
+                      Delete
                     </Button>
                   </DialogTrigger>
-
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>
-                        Are you sure you want to delete this item?
-                      </DialogTitle>
+                      <DialogTitle>Confirm Delete</DialogTitle>
+                      <p>Are you sure you want to delete this media?</p>
                     </DialogHeader>
                     <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setMediaToDelete(null)}
-                      >
-                        <FiX className="mr-2" />
-                        Cancel
+                      <Button onClick={() => handleDelete(item.id)} variant="destructive">
+                        Delete
                       </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => mediaToDelete && handleDelete(mediaToDelete.id)}
-                      >
-                        Confirm
-                      </Button>
+                      <Button onClick={() => setMediaToDelete(null)}>Cancel</Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -288,7 +277,7 @@ export default function Media() {
       </div>
 
       {showForm && (
-        <div ref={formRef} className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
             <h2 className="text-xl font-semibold mb-4">
               {editingMedia ? "Edit Media" : "Add Media"}
@@ -348,7 +337,7 @@ export default function Media() {
               )}
               {newMedia.type === "Blog" && (
                 <>
-                 <textarea
+                  <textarea
                     name="blog"
                     value={newMedia.blog || ''}
                     onChange={handleInputChange}
