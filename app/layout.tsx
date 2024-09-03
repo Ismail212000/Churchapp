@@ -5,6 +5,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "../components/Sidebar/Sidebar"; // Import the Sidebar component
 import SingUp from "../app/(main)/auth/main/page"; // Import the SignUp component
+import { useRouter } from "next/navigation";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,13 +16,15 @@ export default function RootLayout({
 }>) {
   const [showMain, setShowMain] = useState(false);
 
-  useEffect(() => {
-    // Check if the token exists in localStorage
-    const token = localStorage.getItem("token");
-    if (token) {
-      setShowMain(true);
-    }
-  }, []);
+  const router = useRouter();
+useEffect(() => {
+  // Check if the token exists in localStorage
+  const token = localStorage.getItem("token");
+  if (token) {
+  setShowMain(true);
+  router.push("/dashboard");
+  }
+  }, [router]);
 
   return (
     <html lang="en">

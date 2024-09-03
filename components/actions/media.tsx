@@ -41,7 +41,7 @@ const AddMedia: React.FC<AddMediaProps> = ({ className, onClick, onSetHandleTab 
       </div>
 
       {/* Render content based on the selected tab */}
-      <div className={className} onClick={onClick}>
+      {/* <div className={className} onClick={onClick}>
         {currentTab === "Video" && (
           <div className="flex justify-center items-center px-1 py-3 border-2 border-dashed border-gray-300 rounded-lg mt-2">
             <div className="text-center">
@@ -90,7 +90,7 @@ const AddMedia: React.FC<AddMediaProps> = ({ className, onClick, onSetHandleTab 
               </div>
               <h1 className="font-bold text-black">Create a New Blog Post</h1>
               {/* Add blog post form or editor here */}
-            </div>
+            {/* </div>
           </div>
         )}
 
@@ -110,7 +110,7 @@ const AddMedia: React.FC<AddMediaProps> = ({ className, onClick, onSetHandleTab 
             </div>
           </div>
         )}
-      </div>
+      </div> */} 
     </div>
   );
 };
