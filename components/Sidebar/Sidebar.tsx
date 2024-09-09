@@ -34,7 +34,7 @@ const menuItems = [
   { name: "Prayer Request", href: "/prayerRequest", icon: FaPray },
   { name: "Daily Quote", href: "/dailyquote", icon: FaQuoteLeft },
   // { name: "Auction", href: "", icon: TfiAnnouncement },
-  { name: "Donation", href: "/donation", icon: FaDonate },
+  // { name: "Donation", href: "/donation", icon: FaDonate },
   { name: "About", href: "/about", icon: BiSolidChurch  },
   // { name: "Subscription", href: "", icon: MdSubscriptions },
   // { name: "Ministries", href: "/videos", icon: GiTemplarShield },
