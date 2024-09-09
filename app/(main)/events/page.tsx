@@ -21,6 +21,7 @@ import { saveEvent, fetchAllEvents } from "@/components/actions/events";
 import Image from "next/image";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
+
 interface AgendaItem {
   title: string;
   time: string;
@@ -100,19 +101,21 @@ export default function Events() {
       // Retrieve churchId from local storage
       const churchId = localStorage.getItem("storedChurchId");
 
-      // Construct the event to save, including the churchId
+      // Construct the event to save, ensuring the original id is retained if editing
       const eventToSave = {
         ...newEvent,
-        id: editingEvent ? editingEvent.id : Date.now(),
+        id: editingEvent ? editingEvent.id : Date.now(), // Keep the existing id if editing
         churchId: churchId || "", // Add churchId to the event data
       };
 
+      // Save the event, passing the id if it's an edit
       if (editingEvent) {
         await saveEvent(eventToSave, editingEvent.id.toString());
       } else {
         await saveEvent(eventToSave);
       }
 
+      // Update the events list in state
       setEvents((prev) => {
         return editingEvent
           ? prev.map((event) =>
@@ -121,6 +124,7 @@ export default function Events() {
           : [...prev, eventToSave];
       });
 
+      // Reset the form after saving
       setNewEvent({
         id: 0,
         title: "",
@@ -141,7 +145,6 @@ export default function Events() {
       setLoading(false);
     }
   };
-
   const handleEdit = (event: Event) => {
     setEditingEvent(event);
     setNewEvent(event);
@@ -205,11 +208,11 @@ export default function Events() {
     if (file) {
       // Get a reference to the storage service and a reference to the file path
       const storage = getStorage();
-      const storageRef = ref(storage, `events/${file.name}`);
-  
+      const storageRef = ref(storage, `event/${file.name}`);
+
       // Upload the file
       const uploadTask = uploadBytesResumable(storageRef, file);
-  
+
       uploadTask.on(
         'state_changed',
         (snapshot) => {
@@ -233,6 +236,7 @@ export default function Events() {
       );
     }
   };
+
   // const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
   //   const file = event.target.files?.[0];
   //   if (file) {
@@ -279,7 +283,16 @@ export default function Events() {
         return events;
     }
   };
-  console.log("new Events:",newEvent)
+  console.log("new Events:", newEvent)
+
+
+
+  const [expandedEventId, setExpandedEventId] = useState<number | null>(null);
+
+  const handleSeeMore = (id: number) => {
+    setExpandedEventId(expandedEventId === id ? null : id);
+  };
+
   return (
     <>
       {/* event header */}
@@ -321,8 +334,8 @@ export default function Events() {
         <div className="flex justify-start items-center mb-4">
           <div
             className={`${currentTab === "current"
-                ? "border-b-2 text-[#280559] border-[#280559]"
-                : "text-[#92929D]"
+              ? "border-b-2 text-[#280559] border-[#280559]"
+              : "text-[#92929D]"
               } transition-all ease-in-out duration-500`}
             onClick={() => setCurrentTab("current")}
           >
@@ -333,8 +346,8 @@ export default function Events() {
 
           <div
             className={`${currentTab === "upcoming"
-                ? "border-b-2 rounded text-[#280559] border-[#280559]"
-                : " text-[#92929D]"
+              ? "border-b-2 rounded text-[#280559] border-[#280559]"
+              : " text-[#92929D]"
               }  transition-all ease-in-out duration-500 ml-4`}
             onClick={() => setCurrentTab("upcoming")}
           >
@@ -345,8 +358,8 @@ export default function Events() {
 
           <div
             className={`${currentTab === "previous"
-                ? "border-b-2 rounded text-[#280559] border-[#280559]"
-                : "text-[#92929D]"
+              ? "border-b-2 rounded text-[#280559] border-[#280559]"
+              : "text-[#92929D]"
               } transition-all ease-in-out duration-500 ml-4`}
             onClick={() => setCurrentTab("previous")}
           >
@@ -358,25 +371,36 @@ export default function Events() {
         {/* Event cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 justify-items-center">
           {filterEvents(events, currentTab).map((event) => {
-            // Assuming event.date is a Date object or a parsable date string
-            const isUpcomingEvent = new Date(event.date) > new Date();
+            const isExpanded = expandedEventId === event.id;
 
             return (
               <Card key={event.id} className="w-full max-w-xs">
                 {event.banner && (
-                  <Image
-                    src={event.banner}
-                    alt={event.title}
-                    width={1200}
-                    height={1200}
-                    className="w-full h-30 object-cover rounded-t-lg"
-                  />
+                  <div className="w-full h-40 overflow-hidden rounded-t-lg">
+                    <img
+                      src={event.banner}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 )}
+
+
                 <CardHeader>
                   <CardTitle>{event.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>{event.description}</p>
+                  <p>
+                    {isExpanded ? event.description : `${event.description.slice(0, 50)}...`}
+                  </p>
+                  {event.description.length > 50 && (
+                    <button
+                      onClick={() => handleSeeMore(event.id)}
+                      className="text-blue-600 underline mt-2"
+                    >
+                      {isExpanded ? 'See Less' : 'See More'}
+                    </button>
+                  )}
                   {event.isPaidEvent && (
                     <p className="mt-2 text-green-600">Paid Event</p>
                   )}
@@ -385,17 +409,14 @@ export default function Events() {
                   )}
                 </CardContent>
                 <CardFooter className="justify-center gap-2">
-                  {isUpcomingEvent && (
-                    <Button
-                      onClick={() => handleEdit(event)}
-                      size="sm"
-                      variant="outline"
-                      className="bg-[#047857] text-white"
-                    >
-                      <FiEdit className="mr-2" />
-                      Edit
-                    </Button>
-                  )}
+                  <Button
+                    onClick={() => handleEdit(event)}
+                    size="sm"
+                    variant="outline"
+                    className="bg-[#047857] text-white"
+                  >
+                    Edit
+                  </Button>
                   <div>
                     <Button
                       onClick={() => handleDeleteClick(event.id)}
@@ -404,7 +425,6 @@ export default function Events() {
                     >
                       <FiTrash2 className="text-[#047857]" />
                     </Button>
-
                     {isPopupOpen && (
                       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
                         <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
@@ -437,6 +457,7 @@ export default function Events() {
             );
           })}
         </div>
+
 
 
         {/* Side form */}
