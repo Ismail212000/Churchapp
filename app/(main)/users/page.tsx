@@ -557,7 +557,7 @@ export default function Users() {
       <DataTable
         data={displayedUsers} // Use filtered or unfiltered data based on filter state
         columns={columns}
-        tableAction={<Tableaction onGetSearchVal={onGetSearchVal} />}
+        tableAction={<Tableaction onGetSearchVal={onGetSearchVal} print={false} />}
       />
       {showModal && userDetails && (
         <UserDetailModal
