@@ -5,7 +5,11 @@ import { IoFilterSharp, IoPrintSharp } from "react-icons/io5";
 interface SearchProps {
   onGetSearchVal: (value: string) => void;
 }
-const Tableaction: React.FC<SearchProps> = ({onGetSearchVal}) => {
+
+interface TableactionProps extends SearchProps {
+  print: boolean;
+}
+const Tableaction: React.FC<TableactionProps> = ({onGetSearchVal, print=true}) => {
   const [searchValue, setSearchValue] = useState("");
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -32,9 +36,11 @@ const Tableaction: React.FC<SearchProps> = ({onGetSearchVal}) => {
           <MdOutlineArrowCircleDown className="text-[#280559]" />{" "}
           <span>Export</span>
         </button>
+        {print && (
         <button className="flex text-[#280559] items-center bg-[#fff] shadow rounded-[13px] gap-2 justify-center p-2 w-[110px]">
           <IoPrintSharp className="text-[#280559]" /> <span>Print</span>
         </button>
+        )}
       </div>
     </div>
   );
