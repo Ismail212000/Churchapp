@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import {toast} from 'sonner'
 import { Switch } from "@/components/ui/switch";
 import {Card,CardHeader,CardContent,CardFooter,CardTitle,} from "@/components/ui/card";
-import { saveEvent, fetchAllEvents, deleteEvent } from "@/components/actions/events";
+import { fetchAllEvents, deleteEvent } from "@/components/actions/events";
 import Image from "next/image";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { getFirestore, doc, setDoc, deleteDoc, updateDoc, collection, getDoc } from "firebase/firestore";
