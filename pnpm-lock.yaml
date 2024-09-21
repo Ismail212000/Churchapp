@@ -147,9 +147,6 @@ importers:
       '@types/react-big-calendar':
         specifier: ^1.8.11
         version: 1.8.11
-      '@types/react-calendar':
-        specifier: ^4.1.0
-        version: 4.1.0(@types/react@18.3.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@types/react-dom':
         specifier: ^18
         version: 18.3.0
@@ -2105,10 +2102,6 @@ packages:
 
   '@types/react-big-calendar@1.8.11':
     resolution: {integrity: sha512-/j9WOY79Q9A3cLtAa/cEKCi9DPmzcjfG7WaKW/6xlJOLFRkqCb0d2BRxtBETLO0yzLY/nDC95z9Cnp9vG2EmjQ==}
-
-  '@types/react-calendar@4.1.0':
-    resolution: {integrity: sha512-CZL0+bOJ43+ZxnScd6n6SbA3RvoT/FurMIKevvTnRhLdncTRO7LyvBaFu3Bmwoad8ApVBJsMyAiPO79vGWRbbA==}
-    deprecated: This is a stub types definition. react-calendar provides its own type definitions, so you do not need this installed.
 
   '@types/react-dom@18.3.0':
     resolution: {integrity: sha512-EhwApuTmMBmXuFOikhQLIBUn6uFg81SwLMOAUgodJF14SOBOCMdU04gDoYi0WOJJHD144TL32z4yDqCW3dnkQg==}
@@ -7417,14 +7410,6 @@ snapshots:
       '@types/date-arithmetic': 4.1.4
       '@types/prop-types': 15.7.12
       '@types/react': 18.3.4
-
-  '@types/react-calendar@4.1.0(@types/react@18.3.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      react-calendar: 5.0.0(@types/react@18.3.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-    transitivePeerDependencies:
-      - '@types/react'
-      - react
-      - react-dom
 
   '@types/react-dom@18.3.0':
     dependencies:
