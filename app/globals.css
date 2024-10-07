@@ -102,3 +102,19 @@
 .donation-modal::-webkit-scrollbar {
   display: none;
 }
+.react-calendar{
+  width: 100% !important;
+}
+.react-calendar button{
+  width:200px !important;
+  height:100px !important;
+}
+.rbc-date-cell {
+  text-align: left !important;
+  padding-left: 2px !important;
+}
+
+.rbc-event, .rbc-day-slot .rbc-background-event {
+  background-color: #CDFFC0 !important;
+  color: #000 !important;
+}

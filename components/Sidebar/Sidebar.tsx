@@ -16,6 +16,7 @@ import {
   FaTimes,
   FaSignOutAlt,
 } from "react-icons/fa";
+import { BiSolidChurch } from "react-icons/bi";
 import { BsCalendarEventFill } from "react-icons/bs";
 import { GiTemplarShield } from "react-icons/gi";
 import { MdSubscriptions } from "react-icons/md";
@@ -33,7 +34,8 @@ const menuItems = [
   { name: "Prayer Request", href: "/prayerRequest", icon: FaPray },
   { name: "Daily Quote", href: "/dailyquote", icon: FaQuoteLeft },
   // { name: "Auction", href: "", icon: TfiAnnouncement },
-  { name: "Donation", href: "/donation", icon: FaDonate },
+  // { name: "Donation", href: "/donation", icon: FaDonate },
+  { name: "About", href: "/about", icon: BiSolidChurch  },
   // { name: "Subscription", href: "", icon: MdSubscriptions },
   // { name: "Ministries", href: "/videos", icon: GiTemplarShield },
 ];
@@ -50,7 +52,8 @@ const Sidebar = () => {
   const hideLogoutPopup = () => setIsLogoutPopupVisible(false);
     const confirmLogout = () => {
     localStorage.removeItem("token");
-    window.location.reload(); // Reload the page after deleting the token
+    window.location.reload(); 
+    window.location.href="/"
   };
  
   return (

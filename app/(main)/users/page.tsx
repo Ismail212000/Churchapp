@@ -1,12 +1,11 @@
-
 "use client";
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { FiPlusCircle, FiX} from "react-icons/fi";
+import { FiPlusCircle, FiX } from "react-icons/fi";
 import { Label } from "../../../components/ui/label";
 import { Input } from "../../../components/ui/input";
 import { RadioGroup, RadioGroupItem } from "../../../components/ui/radio-group";
-import {  fetchUsers,deleteUser } from '../../../components/actions/users';
+import { fetchUsers, deleteUser } from "../../../components/actions/users";
 import DataTable from "@/components/datatable/table";
 import { IoMdSearch } from "react-icons/io";
 import { IoFilterSharp, IoPrintSharp } from "react-icons/io5";
@@ -14,11 +13,22 @@ import { MdOutlineArrowCircleDown } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { v4 as uuidv4 } from "uuid";
 import Image from "next/image";
-import { createUserWithEmailAndPassword, sendEmailVerification, User } from "firebase/auth";
-import { doc, setDoc, Timestamp } from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  User,
+} from "firebase/auth";
+import { doc, setDoc, Timestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
-
-
+import {
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytesResumable,
+} from "firebase/storage";
+import emailjs from "emailjs-com";
+import CustomButton from "@/components/customebutton";
+import Tableaction from "@/components/Tableaction/tableaction";
 
 interface FamilyMember {
   name: string;
@@ -33,14 +43,17 @@ interface UserData {
   familyHeadName: string;
   contact: string;
   email: string;
-  password:string;
+  password: string;
   address: string;
   members: FamilyMember[];
   churchId?: string;
 }
 
-
-const OptionsDropdown: React.FC<{ userId: string; onEdit: () => void; onDelete: () => void }> = ({ userId, onEdit, onDelete }) => {
+const OptionsDropdown: React.FC<{
+  userId: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}> = ({ userId, onEdit, onDelete }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleDropdown = () => {
@@ -99,52 +112,86 @@ export default function Users() {
   const [users, setUsers] = useState<UserData[]>([]);
   // const [formVisible, setFormVisible] = useState(true);
   const [showModal, setShowModal] = useState(false);
-const [userDetails, setUserDetails] = useState<UserData | null>(null);
-const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ user, onClose }) => {
-  if (!user) return null;
+  const [userDetails, setUserDetails] = useState<UserData | null>(null);
+  const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({
+    user,
+    onClose,
+  }) => {
+    if (!user) return null;
 
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div className="bg-white p-8 rounded shadow-md w-96">
-        <h2 className="text-2xl font-bold mb-4">User Details</h2>
-        <Image src={user.profilePhoto || ""} alt="Profile" width={32} height={32}className="w-32 h-32 object-cover mb-4 mx-auto" />
-        <p><strong>Family Head Name:</strong> {user.familyHeadName}</p>
-        <p><strong>Contact:</strong> {user.contact}</p>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>password:</strong> {user.password}</p>
-        <p><strong>Address:</strong> {user.address}</p>
-        <p><strong>Members:</strong></p>
-        <ul>
-          {user.members && user.members.length > 0 ? (
-            user.members.map((member, index) => (
-              <li key={index}>
-                <strong>Name:</strong> {member.name}, <strong>Relationship:</strong> {member.relationship}, <strong>Gender:</strong> {member.gender}, <strong>Age:</strong> {member.age}
-              </li>
-            ))
-          ) : (
-            <li>No members</li>
-          )}
-        </ul>
-        <button onClick={onClose} className="mt-4 bg-blue-500 text-white py-2 px-4 rounded">Close</button>
+    return (
+      <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+        <div className="bg-white p-8 rounded shadow-md w-96">
+          <h2 className="text-2xl font-bold mb-4">User Details</h2>
+          <Image
+            src={user.profilePhoto || ""}
+            alt="Profile"
+            width={1200}
+            height={1200}
+            className="w-32 h-32 object-cover mb-4 mx-auto"
+          />
+          <p>
+            <strong>Family Head Name:</strong> {user.familyHeadName}
+          </p>
+          <p>
+            <strong>Contact:</strong> {user.contact}
+          </p>
+          <p>
+            <strong>Email:</strong> {user.email}
+          </p>
+          <p>
+            <strong>password:</strong> {user.password}
+          </p>
+          <p>
+            <strong>Address:</strong> {user.address}
+          </p>
+          <p>
+            <strong>Members:</strong>
+          </p>
+          <ul>
+            {user.members && user.members.length > 0 ? (
+              user.members.map((member, index) => (
+                <li key={index}>
+                  <strong>Name:</strong> {member.name},{" "}
+                  <strong>Relationship:</strong> {member.relationship},{" "}
+                  <strong>Gender:</strong> {member.gender},{" "}
+                  <strong>Age:</strong> {member.age}
+                </li>
+              ))
+            ) : (
+              <li>No members</li>
+            )}
+          </ul>
+          <button
+            onClick={onClose}
+            className="mt-4 bg-blue-500 text-white py-2 px-4 rounded"
+          >
+            Close
+          </button>
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
+  console.log(
+    "process.env.REACT_APP_EMAILJS_SERVICE_ID",
+    process.env.NEXT_APP_EMAILJS_SERVICE_ID
+  );
 
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [edit, setEdit] = useState<boolean>(false);
   const [formData, setFormData] = useState<UserData>({
     id: "",
     profilePhoto: null,
     familyHeadName: "",
     contact: "",
     email: "",
-    password:"",
+    password: "",
     address: "",
     members: [], // Ensure this is an empty array
     churchId: "",
   });
-  
+
   const [error, setError] = useState<string | null>(null);
 
   const [searchValue, setSearchValue] = useState("");
@@ -152,12 +199,12 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
 
   const formRef = useRef<HTMLDivElement>(null);
 
-  useEffect(()=>{
-    const storedChurchId = localStorage.getItem('storedChurchId');
-    if(storedChurchId){
-      setFormData({...formData, churchId: storedChurchId})
+  useEffect(() => {
+    const storedChurchId = localStorage.getItem("storedChurchId");
+    if (storedChurchId) {
+      setFormData({ ...formData, churchId: storedChurchId });
     }
-  },[])
+  }, []);
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -173,7 +220,9 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
 
     const handleClickOutside = (event: MouseEvent) => {
       if (formRef.current && !formRef.current.contains(event.target as Node)) {
-        const selectElement = document.querySelector('.select-trigger') as HTMLElement;
+        const selectElement = document.querySelector(
+          ".select-trigger"
+        ) as HTMLElement;
         if (selectElement && selectElement.contains(event.target as Node)) {
           return;
         }
@@ -186,162 +235,165 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { familyHeadName, contact, email, password, address, members } = formData;
-  
-    // Validate required fields
-    if (!familyHeadName || !contact || !email || !password || !address || members.some(member => !member.name || !member.relationship || !member.gender || !member.age)) {
+    const {
+      familyHeadName,
+      contact,
+      email,
+      password,
+      address,
+      members,
+      churchId,
+    } = formData;
+
+    if (
+      !familyHeadName ||
+      !contact ||
+      !email ||
+      !password ||
+      !address ||
+      !churchId ||
+      members.some(
+        (member) =>
+          !member.name || !member.relationship || !member.gender || !member.age
+      )
+    ) {
       alert("Please complete all required fields.");
       return;
     }
-  
+
     try {
       if (!formData.id) {
         formData.id = uuidv4();
       }
-  
-      // Create user with email and password
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      console.log('User created:', userCredential);
-  
-      // Send verification email
-      try {
-        await sendEmailVerification(user);
-        console.log('Verification email sent successfully');
-        alert('Verification email sent successfully. Please check your inbox.');
-      } catch (verificationError: unknown) {
-        if (verificationError instanceof Error) {
-          console.error('Failed to send verification email:', verificationError.message);
-          alert(`Failed to send verification email. Error: ${verificationError.message}`);
-        } else {
-          console.error('Failed to send verification email:', verificationError);
-          alert('Failed to send verification email. Please try again later.');
+
+      if (!edit) {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+        const user = userCredential.user;
+        console.log("User created:", userCredential);
+
+        try {
+          await sendEmailVerification(user);
+          console.log("Verification email sent successfully");
+          alert(
+            "Verification email sent successfully. Please check your inbox."
+          );
+        } catch (verificationError: unknown) {
+          console.error(
+            "Failed to send verification email:",
+            verificationError
+          );
+          alert(
+            `Failed to send verification email. Error: ${verificationError}`
+          );
         }
       }
-  
+      if (edit) {
+        await updateDoc(doc(db, "users", formData.id), {
+          familyHeadName,
+          contact,
+          email,
+          password,
+          address,
+          members,
+          churchId,
+        });
+        setEdit(false);
+        setShowForm(false);
+        const updatedUsers = await fetchUsers();
+        setUsers(updatedUsers);
+      }
       const userData: UserData = {
         ...formData,
-        id: user.uid,
+        id: formData.familyHeadName,
       };
-  
-      // Save user data to Firestore
-      await setDoc(doc(db, "users", user.uid), userData);
+      console.log("UserData:", userData);
+      await setDoc(doc(db, "users", formData.familyHeadName), userData);
       setShowForm(false);
       const updatedUsers = await fetchUsers();
       setUsers(updatedUsers);
-  
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('Error submitting form:', error.message);
-        alert(`An error occurred while saving the user. Error: ${error.message}`);
-      } else {
-        console.error('An unexpected error occurred:', error);
-        alert('An error occurred while saving the user.');
+
+      try {
+        const emailParams = {
+          to_name: familyHeadName,
+          to_email: email,
+          from_name: "Your Service Name",
+          message: `Welcome to our Church! Your email is ${email} and your password is ${password}. Your church ID is ${churchId}.`,
+        };
+
+        await emailjs.send(
+          "service_f75rhao",
+          "template_85uargp",
+          emailParams,
+          "GKPu2gKNs7pCFFcPJ"
+        );
+
+        console.log(
+          "Welcome email sent successfully",
+          process.env.NEXT_APP_EMAILJS_SERVICE_ID
+        );
+        alert("Welcome email sent successfully.");
+      } catch (emailError: unknown) {
+        if (emailError instanceof Error) {
+          console.error("Failed to send welcome email:", emailError.message);
+          alert(`Failed to send welcome email. Error: ${emailError.message}`);
+        } else {
+          console.error("Failed to send welcome email:", emailError);
+          alert("Failed to send welcome email. Please try again later.");
+        }
       }
+    } catch (error: unknown) {
+      console.error("Error submitting form:", error);
+      alert(`An error occurred while saving the user. Error: ${error}`);
     }
   };
-  
-
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     const { familyHeadName, contact, email, password, address, members, churchId } = formData;
-  
-//     // Validate required fields
-//     if (!familyHeadName || !contact || !email || !password || !address || members.some(member => !member.name || !member.relationship || !member.gender || !member.age)) {
-//       alert("Please complete all required fields.");
-//       return;
-//     }
-  
-//     try {
-//       if (!formData.id) {
-//         formData.id = uuidv4();
-//       }
-  
-//       // Create user with email and password
-//       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-//       const user = userCredential.user;
-//       console.log('User created:', userCredential);
-  
-//       // Send verification email with additional information
-//   // Send verification email with additional information
-// // Send verification email with additional information
-// try {
-//   await sendEmailVerification(user, {
-//     url: 'https://your-app.com/verify-email',
-//     handleCodeInApp: true,
-//     emailBody: `
-//       Dear user,
-      
-//       Thank you for creating an account with our church. Here are your account details:
-      
-//       Church ID: ${churchId}
-//       Password: ${password}
-//       Email: ${email}
-
-//       To verify your email, please click on the following link:
-//       ${await user.getEmailVerificationURL()}
-      
-//       After verifying your email, you can change your password by visiting the 'Change Password' section of our app.
-      
-//       Best regards,
-//       Church Admin
-//     `
-//   });
-//   console.log('Verification email sent successfully');
-//   alert('Verification email sent successfully. Please check your inbox.');
-// } catch (verificationError: unknown) {
-//   if (verificationError instanceof Error) {
-//     console.error('Failed to send verification email:', verificationError.message);
-//     alert(`Failed to send verification email. Error: ${verificationError.message}`);
-//   } else {
-//     console.error('Failed to send verification email:', verificationError);
-//     alert('Failed to send verification email. Please try again later.');
-//   }
-// }      const userData: UserData = {
-//         ...formData,
-//         id: user.uid,
-//       };
-  
-//       // Save user data to Firestore
-//       await setDoc(doc(db, "users", user.uid), userData);
-//       setShowForm(false);
-//       const updatedUsers = await fetchUsers();
-//       setUsers(updatedUsers);
-  
-//     } catch (error: unknown) {
-//       if (error instanceof Error) {
-//         console.error('Error submitting form:', error.message);
-//         alert(`An error occurred while saving the user. Error: ${error.message}`);
-//       } else {
-//         console.error('An unexpected error occurred:', error);
-//         alert('An error occurred while saving the user.');
-//       }
-//     }
-//   };
-
-  
-  
-  
-  
-  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, profilePhoto: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      // Get a reference to the storage service and a reference to the file path
+      const storage = getStorage();
+      const storageRef = ref(storage, `profilePhotos/${file.name}`);
+
+      // Upload the file
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          // Optionally, you can handle the upload progress here
+          console.log(
+            `Upload is ${Math.round(
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+            )}% done`
+          );
+        },
+        (error) => {
+          // Handle unsuccessful uploads
+          console.error("Upload failed:", error);
+        },
+        () => {
+          // Handle successful uploads on complete
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            // Update form data with the download URL of the profile photo
+            setFormData((prev) => ({
+              ...prev,
+              profilePhoto: downloadURL,
+            }));
+          });
+        }
+      );
     }
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
 
-    // Allow only numeric input
+    // Allow only numeric input for contact
     if (name === "contact") {
       if (/^[0-9]*$/.test(value)) {
         setFormData((prevData) => ({ ...prevData, [name]: value }));
@@ -349,8 +401,13 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
       } else {
         setError("Please enter a valid contact number.");
       }
+    } else {
+      // Handle other inputs
+      setFormData((prevData) => ({ ...prevData, [name]: value }));
+      setError(null);
     }
   };
+
   // const handleSelectChange = (index: number, field: string, value: string) => {
   //   setFormData(prev => {
   //     const updatedMembers = [...prev.members];
@@ -358,19 +415,23 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
   //     return { ...prev, members: updatedMembers };
   //   });
   // };
-  
+
   // Update handleFamilyMemberChange function
-  const handleFamilyMemberChange = (index: number, field: string, value: string) => {
-    setFormData(prev => {
+  const handleFamilyMemberChange = (
+    index: number,
+    field: string,
+    value: string
+  ) => {
+    setFormData((prev) => {
       const updatedMembers = [...prev.members];
       updatedMembers[index] = { ...updatedMembers[index], [field]: value };
       return { ...prev, members: updatedMembers };
     });
   };
-  
 
   const handleEditClick = (user: UserData) => {
     setSelectedUser(user);
+    setEdit(true);
     setFormData(user);
     setShowForm(true);
   };
@@ -384,7 +445,6 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
       console.error("Error deleting user:", error);
     }
   };
-  
 
   const handleViewClick = (user: UserData) => {
     setUserDetails(user);
@@ -400,89 +460,69 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
     }));
   };
 
- 
+  const onGetSearchVal = (searchValue: string) => {
+    setSearchValue(searchValue);
+    console.log("sss", searchValue);
+  };
 
   const handleRemoveFamilyMember = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      members: prev.members.filter((_, i) => i !== index)
+      members: prev.members.filter((_, i) => i !== index),
     }));
   };
 
-  const columns = useMemo(() => [
-    { accessorKey: "familyHeadName", header: "Family Head Name" },
-    { accessorKey: "contact", header: "Contact" },
-    { accessorKey: "email", header: "Email" },
-    { accessorKey: "address", header: "Address" },
-    { accessorKey: "members", header: "Members", cell: ({ row }: { row: any }) => (row.original.members || []).length },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }: { row: any }) => (
-        <div className="flex gap-2">
-          <Button onClick={() => handleViewClick(row.original)}>View</Button>
-        </div>
-      ),
-    },
-    {
-      id: "options",
-      header: "Options",
-      cell: ({ row }: { row: any }) => (
-        <OptionsDropdown
-          userId={row.original.id}
-          onEdit={() => handleEditClick(row.original)}
-          onDelete={() => row.original.id && handleDeleteClick(row.original.id)}
-        />
-      ),
-    },
-  ], [handleEditClick, handleDeleteClick, handleViewClick]);
-  // Filter users based on search value
+  const columns = useMemo(
+    () => [
+      { accessorKey: "familyHeadName", header: "Family Head Name" },
+      { accessorKey: "contact", header: "Contact" },
+      { accessorKey: "email", header: "Email" },
+      { accessorKey: "address", header: "Address" },
+      {
+        accessorKey: "members",
+        header: "Members",
+        cell: ({ row }: { row: any }) => (row.original.members || []).length,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }: { row: any }) => (
+          <div className="flex gap-2">
+            <Button onClick={() => handleViewClick(row.original)}>View</Button>
+          </div>
+        ),
+      },
+      {
+        id: "options",
+        header: "Options",
+        cell: ({ row }: { row: any }) => (
+          <OptionsDropdown
+            userId={row.original.id}
+            onEdit={() => handleEditClick(row.original)}
+            onDelete={() =>
+              row.original.id && handleDeleteClick(row.original.id)
+            }
+          />
+        ),
+      },
+    ],
+    [handleEditClick, handleDeleteClick, handleViewClick]
+  );
+
   const filteredUsers = useMemo(() => {
-    return users.filter(user => {
+    return users.filter((user) => {
       const searchLower = searchValue.toLowerCase();
       return (
-        (user.familyHeadName && user.familyHeadName.toLowerCase().includes(searchLower)) ||
+        (user.familyHeadName &&
+          user.familyHeadName.toLowerCase().includes(searchLower)) ||
         (user.contact && user.contact.toLowerCase().includes(searchLower)) ||
         (user.email && user.email.toLowerCase().includes(searchLower)) ||
-        (user.password && user.password.toLowerCase().includes(searchLower))
+        (user.address && user.address.toLowerCase().includes(searchLower))
       );
-      
     });
   }, [searchValue, users]);
 
-  // Filtered data based on applied filter state
-  const displayedUsers = filterApplied ? filteredUsers : users;
-
-  const Tableaction: React.FC = () => {
-    return (
-      <div className="w-full flex items-center gap-2">
-        <div className="bg-[#fff] rounded-[13px] pl-1 pr-1 border border-[#CBD2DC80] w-[65%] h-[40px] flex items-center gap-2">
-          <IoMdSearch className="text-[25px]" />
-          <input
-            type="search"
-            placeholder="Search for user"
-            onChange={(e) => setSearchValue(e.target.value)}
-            value={searchValue}
-            className="bg-transparent w-full outline-none h-full"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="flex text-[#280559] items-center bg-[#fff] shadow rounded-[13px] gap-2 justify-center p-2 w-[110px]"
-            onClick={() => setFilterApplied(!filterApplied)} // Toggle filter application
-          >
-            <IoFilterSharp className="text-[#280559]" /> <span>Filters</span>
-          </button>
-          <button className="flex text-[#280559] items-center bg-[#fff] shadow rounded-[13px] gap-2 justify-center p-2 w-[110px]">
-            <MdOutlineArrowCircleDown className="text-[#280559]" /> <span>Export</span>
-          </button>
-          <button className="flex text-[#280559] items-center bg-[#fff] shadow rounded-[13px] gap-2 justify-center p-2 w-[110px]">
-            <IoPrintSharp className="text-[#280559]" /> <span>Print</span>
-          </button>
-        </div>
-      </div>
-    );
-  };
+  const displayedUsers = filteredUsers ? filteredUsers : users;
 
   return (
     <>
@@ -491,11 +531,11 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
           <h1 className="text-[#280559] font-bold text-xl">Users</h1>
           <p className="text-[#9898A3] text-xs">View all church users here</p>
         </div>
-  
-        <Button
+
+        <CustomButton
           className="bg-[#280559] text-white flex gap-2"
           onClick={() => {
-            const storedChurchId = localStorage.getItem('storedChurchId') || "";
+            const storedChurchId = localStorage.getItem("storedChurchId") || "";
             setShowForm(true);
             setFormData({
               id: "",
@@ -503,32 +543,33 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
               familyHeadName: "",
               contact: "",
               email: "",
-              password:"",
+              password: "",
               address: "",
               members: [], // Reset members to an empty array
-              churchId: storedChurchId
-              
+              churchId: storedChurchId,
             });
           }}
-          
         >
-          <FiPlusCircle />
+          <FiPlusCircle className="mb-[3px]" />
           <p>Create New User</p>
-        </Button>
+        </CustomButton>
       </div>
       <DataTable
         data={displayedUsers} // Use filtered or unfiltered data based on filter state
         columns={columns}
-        tableAction={<Tableaction />}
+        tableAction={<Tableaction onGetSearchVal={onGetSearchVal} print={false} />}
       />
       {showModal && userDetails && (
-  <UserDetailModal user={userDetails} onClose={() => setShowModal(false)} />
-)}
+        <UserDetailModal
+          user={userDetails}
+          onClose={() => setShowModal(false)}
+        />
+      )}
       <div className="sm:mt-4 md:mt-0 sm:px-4 md:px-8  bg-white rounded-3xl relative">
         {showForm && (
           <div
             ref={formRef}
-            className="fixed inset-y-0 right-0 bg-white shadow-lg p-6 w-80 overflow-y-auto"
+            className="fixed inset-y-0 right-0 bg-white shadow-lg p-6 w-80 overflow-y-auto overflow-x-hidden"
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Create New User</h2>
@@ -550,8 +591,8 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
                   <Image
                     src={formData.profilePhoto}
                     alt="Profile Preview"
-                    width={32}
-                    height={32}
+                    width={1200}
+                    height={1200}
                     className="w-32 h-32 object-cover mb-2"
                   />
                 )}
@@ -602,88 +643,117 @@ const UserDetailModal: React.FC<{ user: UserData; onClose: () => void }> = ({ us
                 />
               </div>
               <div className="mb-4">
-  <Label>Family Members</Label>
-  {(formData.members || []).map((member, index) => (
-    <div key={index} className="mb-2 border p-2 rounded">
-      <div className=" gap-2 mb-2">
-        <div className="flex-1">
-          <Label htmlFor={`memberName${index}`}>Name</Label>
-          <Input
-            type="text"
-            id={`memberName${index}`}
-            value={member.name}
-            onChange={(e) => handleFamilyMemberChange(index, "name", e.target.value)}
-          />
-        </div>
-        <div className="flex-1">
-          <Label htmlFor={`memberRelationship${index}`}>Relationship</Label>
-          <select
-            id={`memberRelationship${index}`}
-            value={member.relationship}
-            onChange={(event) => handleFamilyMemberChange(index, "relationship", event.target.value)}
-            className="border rounded p-2 w-full"
-          >
-            <option value="" disabled>Select relationship</option>
-            <option value="Father">Father</option>
-            <option value="Mother">Mother</option>
-            <option value="Sibling">Sibling</option>
-            {/* Add more options as needed */}
-          </select>
-        </div>
-      </div>
-      <div className="mb-4">
-        <Label>Gender</Label>
-        <RadioGroup
-          value={member.gender}
-          onValueChange={(value) => handleFamilyMemberChange(index, "gender", value)}
-        >
-          <div className="flex gap-4">
-            <RadioGroupItem value="Male" id={`male${index}`} />
-            <Label htmlFor={`male${index}`}>Male</Label>
-            <RadioGroupItem value="Female" id={`female${index}`} />
-            <Label htmlFor={`female${index}`}>Female</Label>
-          </div>
-        </RadioGroup>
-      </div>
-      <div className="flex-1">
-        <Label htmlFor={`memberAge${index}`}>Age</Label>
-        <Input
-          type="text"
-          id={`memberAge${index}`}
-          value={member.age}
-          onChange={(e) => handleFamilyMemberChange(index, "age", e.target.value)}
-        />
-      </div>
-      <Button
-        type="button"
-        className="ml-2 mt-2"
-        onClick={() => handleRemoveFamilyMember(index)}
-      >
-        Remove
-      </Button>
-    </div>
-  ))}
-  <Button
-    type="button"
-    onClick={handleAddFamilyMember}
-    className="mt-2"
-  >
-    Add Family Member
-  </Button>
-</div>
+                <Label>Family Members</Label>
+                {(formData.members || []).map((member, index) => (
+                  <div key={index} className="mb-2 border p-2 rounded">
+                    <div className=" gap-2 mb-2">
+                      <div className="flex-1">
+                        <Label htmlFor={`memberName${index}`}>Name</Label>
+                        <Input
+                          type="text"
+                          id={`memberName${index}`}
+                          value={member.name}
+                          onChange={(e) =>
+                            handleFamilyMemberChange(
+                              index,
+                              "name",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Label htmlFor={`memberRelationship${index}`}>
+                          Relationship
+                        </Label>
+                        <select
+                          id={`memberRelationship${index}`}
+                          value={member.relationship}
+                          onChange={(event) =>
+                            handleFamilyMemberChange(
+                              index,
+                              "relationship",
+                              event.target.value
+                            )
+                          }
+                          className="border rounded p-2 w-full"
+                        >
+                          <option value="" disabled>
+                            Select relationship
+                          </option>
+                          <option value="Father">Father</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Sibling">Sibling</option>
+                          {/* Add more options as needed */}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <Label>Gender</Label>
+                      <RadioGroup
+                        value={member.gender}
+                        onValueChange={(value) =>
+                          handleFamilyMemberChange(index, "gender", value)
+                        }
+                      >
+                        <div className="flex gap-4">
+                          <RadioGroupItem value="Male" id={`male${index}`} />
+                          <Label htmlFor={`male${index}`}>Male</Label>
+                          <RadioGroupItem
+                            value="Female"
+                            id={`female${index}`}
+                          />
+                          <Label htmlFor={`female${index}`}>Female</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <div className="flex-1">
+                      <Label htmlFor={`memberAge${index}`}>Age</Label>
+                      <Input
+                        type="text"
+                        id={`memberAge${index}`}
+                        value={member.age}
+                        onChange={(e) =>
+                          handleFamilyMemberChange(index, "age", e.target.value)
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      className="ml-2 mt-2"
+                      onClick={() => handleRemoveFamilyMember(index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  onClick={handleAddFamilyMember}
+                  className="mt-2"
+                >
+                  Add Family Member
+                </Button>
+              </div>
 
               <div className="flex justify-end">
-                <Button type="submit" className="mr-2">Save</Button>
-                <Button type="button" onClick={() => setShowForm(false)} variant="outline">Cancel</Button>
+                <Button type="submit" className="mr-2">
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
               </div>
             </form>
           </div>
-        
-      )}     
+        )}
       </div>
     </>
   );
-  
 }
 function getVerificationLink(user: User, arg1: string) {
   throw new Error("Function not implemented.");

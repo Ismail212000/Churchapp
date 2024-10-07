@@ -1,31 +1,24 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  FiPlusCircle,
-  FiEdit,
-  FiTrash2,
-  FiX,
-  FiClock,
-  FiUpload,
-} from "react-icons/fi";
+import {FiPlusCircle,FiEdit,FiTrash2,FiX,FiClock,FiUpload,} from "react-icons/fi";
+import { v4 as uuidv4 } from "uuid";
+import {toast} from 'sonner'
 import { Switch } from "@/components/ui/switch";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-  CardTitle,
-} from "@/components/ui/card";
-import { saveEvent, fetchAllEvents } from "@/components/actions/events";
+import {Card,CardHeader,CardContent,CardFooter,CardTitle,} from "@/components/ui/card";
+import { fetchAllEvents } from "@/components/actions/events";
 import Image from "next/image";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { getFirestore, doc, setDoc, deleteDoc, updateDoc, collection, getDoc } from "firebase/firestore";
+import { db } from "@/firebase";
+
 interface AgendaItem {
   title: string;
   time: string;
 }
 
 interface Event {
-  id: number;
+  id: string;
   title: string;
   description: string;
   date: string;
@@ -36,17 +29,18 @@ interface Event {
   churchId?: string;
 }
 
+
 export default function Events() {
   const [showForm, setShowForm] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState("current");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState<Event>({
-    id: 0,
+    id: "",
     title: "",
     description: "",
     date: "",
@@ -54,24 +48,10 @@ export default function Events() {
     isPaidEvent: false,
     banner: null,
     repeat: false,
-    churchId: '',
+    churchId: "",
   });
 
   const formRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (formRef.current && !formRef.current.contains(event.target as Node)) {
-        setShowForm(false);
-        setEditingEvent(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -87,82 +67,269 @@ export default function Events() {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+        setShowForm(false);
+        setEditingEvent(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    try {
-      // Retrieve churchId from local storage
+  
+    // Destructure newEvent properties
+    const { title, date, description, agenda, isPaidEvent, banner, repeat } = newEvent;
       const churchId = localStorage.getItem("storedChurchId");
-
-      // Construct the event to save, including the churchId
+  
+    // Validate required fields
+    if (!title || !description || !banner || !churchId) {
+      toast.error("Please complete all required fields.");
+      setLoading(false);
+      return;
+    }
+  
+    try {
+      // Prepare the event object to save
       const eventToSave = {
         ...newEvent,
-        id: editingEvent ? editingEvent.id : Date.now(),
-        churchId: churchId || "", // Add churchId to the event data
+        id: editingEvent ? editingEvent.id : uuidv4(), // Use existing ID or generate new
+        churchId: churchId || "",
+        updatedAt: new Date().toISOString(),
       };
-
-      if (editingEvent) {
-        await saveEvent(eventToSave, editingEvent.id.toString());
-      } else {
-        await saveEvent(eventToSave);
-      }
-
+  
+      // Reference to the church document and events subcollection
+      const churchDocRef = doc(db, 'church', churchId);
+      const eventsCollectionRef = collection(churchDocRef, 'events');
+      const eventRef = doc(eventsCollectionRef, eventToSave.id);
+  
+      // Save or update the event in Firestore
+      await setDoc(eventRef, eventToSave, { merge: true });
+  
+      // Update local state
       setEvents((prev) => {
-        return editingEvent
-          ? prev.map((event) =>
-            event.id === editingEvent.id ? eventToSave : event
-          )
+        const updatedEvents = editingEvent
+          ? prev.map((event) => (event.id === editingEvent.id ? eventToSave : event))
           : [...prev, eventToSave];
+        return updatedEvents;
       });
-
+  
+      // Reset form and state
       setNewEvent({
-        id: 0,
-        title: "",
-        date: "",
-        description: "",
-        agenda: [{ title: "", time: "" }],
-        isPaidEvent: false,
-        banner: null,
-        repeat: false,
-        churchId: "",
+        id: "",
+              title: "",
+              date: "",
+              description: "",
+              agenda: [{ title: "", time: "" }],
+              isPaidEvent: false,
+              banner: null,
+              repeat: false,
+              churchId: "",
       });
       setShowForm(false);
       setEditingEvent(null);
-    } catch (err) {
-      console.error(err);
+  
+      toast.success(`Event ${editingEvent ? 'updated' : 'created'} successfully!`);
+    } catch (error) {
+      console.error("Error saving event:", error);
       setError("An error occurred while saving the event.");
     } finally {
       setLoading(false);
     }
   };
+// Function to handle editing an existing event
+const handleEdit = (event: any) => {
+  setEditingEvent(event); // Set the event being edited
+  setNewEvent({
+    id: event.id,
+    title: event.title,
+    date:event.date,
+    description: event.description,
+    agenda: event.agenda, 
+    banner: event.banner,
+    isPaidEvent: event.isPaidEvent,
+    repeat: event.repeat,
+  });
+  setShowForm(true); // Show the form for editing
+};
+// Function to handle delete button click
+const handleDeleteClick = (id: string) => {
+  setSelectedEventId(id); // Store the ID of the selected event for deletion
+  setIsPopupOpen(true); // Show confirmation popup
+};
 
-  const handleEdit = (event: Event) => {
-    setEditingEvent(event);
-    setNewEvent(event);
-    setShowForm(true);
-  };
+// Function to confirm event deletion
+const handleConfirmDelete = async () => {
+  if (selectedEventId) {
+    try {
+      const churchId = localStorage.getItem("storedChurchId");
+      if (!churchId) {
+        throw new Error("Church ID is missing.");
+      }
 
-  // const handleDelete = (id: number) => {
-  //   setEvents((prev) => prev.filter((event) => event.id !== id));
+      // Reference to the event document
+      const churchDocRef = doc(db, 'church', churchId);
+      const eventsCollectionRef = collection(churchDocRef, 'events');
+      const eventRef = doc(eventsCollectionRef, selectedEventId);
+
+      // Delete event from the database
+      await deleteDoc(eventRef);
+
+      // Update local state
+      setEvents((prev) => prev.filter((event) => event.id !== selectedEventId));
+
+      // Reset popup and selected event state
+      setIsPopupOpen(false);
+      setSelectedEventId(null);
+    } catch (err) {
+      console.error("Error deleting event:", err);
+      setError("An error occurred while deleting the event.");
+    }
+  }
+};
+  
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   setError(null);
+  
+  //   console.log("Starting handleSubmit function");
+  
+  //   const { title, date, description, agenda, isPaidEvent, banner, repeat } = newEvent;
+  //   const churchId = localStorage.getItem("storedChurchId");
+  
+  //   console.log("Gathered form data:", { title, date, description, agenda, churchId });
+  
+  //   // Check if required fields are filled
+  //   if (!title || !date || !description || !churchId || agenda.some(ag => !ag.title || !ag.time)) {
+  //     console.log("Missing required fields");
+  //     alert("Please complete all required fields.");
+  //     setLoading(false);
+  //     return;
+  //   }
+  
+  //   try {
+  //     console.log("Preparing eventToSave object");
+  //     const eventToSave = {
+  //       ...newEvent,
+  //       // Use existing ID if editing, otherwise generate a new one
+  //       id: editingEvent ? editingEvent.id : uuidv4(),
+  //       churchId: churchId || "",
+  //     };
+  //     console.log("eventToSave prepared:", eventToSave);
+  
+  //     if (!churchId) {
+  //       console.error("Church ID is missing");
+  //       throw new Error("Church ID is missing.");
+  //     }
+  
+  //     console.log("Creating database references");
+  //     const churchDocRef = doc(db, 'church', churchId);
+  //     const eventsCollectionRef = collection(churchDocRef, 'events');
+  //     const eventRef = doc(eventsCollectionRef, eventToSave.id);
+  
+  //     console.log("Database references created:", { churchDocRef, eventsCollectionRef, eventRef });
+  
+  //     console.log(`Attempting to ${editingEvent ? 'update' : 'create'} event`);
+  //     await setDoc(eventRef, {
+  //       ...eventToSave,
+  //       updatedAt: new Date().toISOString()
+  //     }, { merge: true });
+  
+  //     console.log(`Event ${editingEvent ? 'updated' : 'created'} successfully:`, eventToSave);
+  
+  //     // Update local state
+  //     setEvents((prev) => {
+  //       const updatedEvents = editingEvent
+  //         ? prev.map((event) => (event.id === editingEvent.id ? eventToSave : event))
+  //         : [...prev, eventToSave];
+  //       console.log("Updated events state:", updatedEvents);
+  //       return updatedEvents;
+  //     });
+  
+  //     // Reset the form
+  //     setNewEvent({
+  //       id: "",
+  //       title: "",
+  //       date: "",
+  //       description: "",
+  //       agenda: [{ title: "", time: "" }],
+  //       isPaidEvent: false,
+  //       banner: null,
+  //       repeat: false,
+  //       churchId: "",
+  //     });
+  //     setShowForm(false);
+  //     setEditingEvent(null);
+  
+  //     console.log("Form reset and state updated");
+  
+  //     alert(`Event ${editingEvent ? 'updated' : 'created'} successfully!`);
+  //   } catch (error: unknown) {
+  //     console.error("Error in handleSubmit:", error);
+  //     if (error instanceof Error) {
+  //       alert(`An error occurred: ${error.message}`);
+  //       setError(`An error occurred: ${error.message}`);
+  //     } else {
+  //       alert("An unknown error occurred");
+  //       setError("An unknown error occurred");
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //     console.log("handleSubmit function completed");
+  //   }
   // };
-  const handleDeleteClick = (id: number) => {
-    setSelectedEventId(id);
-    setIsPopupOpen(true);
-  };
-  const handleClosePopup = () => {
-    setIsPopupOpen(false);
-    setSelectedEventId(null);
-  };
 
-  const handleConfirmDelete = () => {
-    // Perform delete action here
-    console.log(`Deleting event with ID: ${selectedEventId}`);
-    // After deletion, close the popup
-    handleClosePopup();
-  };
+  // // Function to handle editing an existing event
+  // const handleEdit = (event: Event) => {
+  //   setEditingEvent(event); // Set the event being edited
+  //   setNewEvent(event); // Populate the form with event data
+  //   setShowForm(true); // Show the form for editing
+  // };
+
+  // // Function to handle delete button click
+  // const handleDeleteClick = (id: string) => {
+  //   setSelectedEventId(id); // Store the ID of the selected event for deletion
+  //   setIsPopupOpen(true); // Show confirmation popup
+  // };
+
+  // // Function to confirm event deletion
+  // const handleConfirmDelete = async () => {
+  //   if (selectedEventId) {
+  //     try {
+  //       // Ensure churchId is valid and not null
+  //       const churchId = localStorage.getItem("storedChurchId");
+  //       if (!churchId) {
+  //         throw new Error("Church ID is missing.");
+  //       }
+
+  //       // Reference to the event document
+  //       const churchDocRef = doc(db, 'church', churchId);
+  //       const eventsCollectionRef = collection(churchDocRef, 'events');
+  //       const eventRef = doc(eventsCollectionRef, selectedEventId);
+
+  //       // Delete event from the database
+  //       await deleteDoc(eventRef);
+
+  //       // Remove the event from the local state
+  //       setEvents((prev) => prev.filter((event) => event.id !== selectedEventId));
+
+  //       // Reset popup and selected event state
+  //       setIsPopupOpen(false);
+  //       setSelectedEventId(null);
+  //     } catch (err) {
+  //       console.error("Error deleting event:", err);
+  //       setError("An error occurred while deleting the event.");
+  //     }
+  //   }
+  // };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -197,20 +364,54 @@ export default function Events() {
     setNewEvent((prev) => ({ ...prev, [field]: checked }));
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        setError("Only image files are allowed.");
-        return;
-      }
+      // Get a reference to the storage service and a reference to the file path
+      const storage = getStorage();
+      const storageRef = ref(storage, `event/${file.name}`);
 
-      setError(null);
-      // Handle the image file (e.g., upload to server or preview)
-      console.log("Selected file:", file);
+      // Upload the file
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          // Optionally, you can handle the upload progress here
+          console.log(`Upload is ${Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)}% done`);
+        },
+        (error) => {
+          // Handle unsuccessful uploads
+          console.error("Upload failed:", error);
+        },
+        () => {
+          // Handle successful uploads on complete
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            // Update form data with the download URL of the profile photo
+            setNewEvent((prev) => ({
+              ...prev,
+              banner: downloadURL,
+            }));
+          });
+        }
+      );
     }
   };
+
+  // // const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // //   const file = event.target.files?.[0];
+  // //   if (file) {
+  // //     // Validate file type
+  // //     if (!file.type.startsWith("image/")) {
+  // //       setError("Only image files are allowed.");
+  // //       return;
+  // //     }
+
+  // //     setError(null);
+  // //     // Handle the image file (e.g., upload to server or preview)
+  // //     console.log("Selected file:", file);
+  // //   }
+  // // };
 
 
   const isCurrentEvent = (eventDate: string) => {
@@ -243,6 +444,16 @@ export default function Events() {
         return events;
     }
   };
+  console.log("new Events:", newEvent)
+
+
+
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+
+  const handleSeeMore = (id: string) => {
+    setExpandedEventId(expandedEventId === id ? null : id);
+  };
+
   return (
     <>
       {/* event header */}
@@ -260,7 +471,7 @@ export default function Events() {
               setShowForm(true);
               setEditingEvent(null);
               setNewEvent({
-                id: 0,
+                id: "",
                 title: "",
                 description: "",
                 date: "",
@@ -284,8 +495,8 @@ export default function Events() {
         <div className="flex justify-start items-center mb-4">
           <div
             className={`${currentTab === "current"
-                ? "border-b-2 text-[#280559] border-[#280559]"
-                : "text-[#92929D]"
+              ? "border-b-2 text-[#280559] border-[#280559]"
+              : "text-[#92929D]"
               } transition-all ease-in-out duration-500`}
             onClick={() => setCurrentTab("current")}
           >
@@ -296,8 +507,8 @@ export default function Events() {
 
           <div
             className={`${currentTab === "upcoming"
-                ? "border-b-2 rounded text-[#280559] border-[#280559]"
-                : " text-[#92929D]"
+              ? "border-b-2 rounded text-[#280559] border-[#280559]"
+              : " text-[#92929D]"
               }  transition-all ease-in-out duration-500 ml-4`}
             onClick={() => setCurrentTab("upcoming")}
           >
@@ -308,8 +519,8 @@ export default function Events() {
 
           <div
             className={`${currentTab === "previous"
-                ? "border-b-2 rounded text-[#280559] border-[#280559]"
-                : "text-[#92929D]"
+              ? "border-b-2 rounded text-[#280559] border-[#280559]"
+              : "text-[#92929D]"
               } transition-all ease-in-out duration-500 ml-4`}
             onClick={() => setCurrentTab("previous")}
           >
@@ -321,25 +532,41 @@ export default function Events() {
         {/* Event cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 justify-items-center">
           {filterEvents(events, currentTab).map((event) => {
-            // Assuming event.date is a Date object or a parsable date string
-            const isUpcomingEvent = new Date(event.date) > new Date();
+            const isExpanded = expandedEventId === event.id;
+
+            const handleClosePopup = () => {
+              setIsPopupOpen(false);
+              setSelectedEventId(null);
+            };
 
             return (
               <Card key={event.id} className="w-full max-w-xs">
                 {event.banner && (
-                  <Image
-                    src={event.banner}
-                    alt={event.title}
-                    width={30}
-                    height={20}
-                    className="w-full h-30 object-cover rounded-t-lg"
-                  />
+                  <div className="w-full h-40 overflow-hidden rounded-t-lg">
+                    <img
+                      src={event.banner}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 )}
+
+
                 <CardHeader>
                   <CardTitle>{event.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p>{event.description}</p>
+                  <p>
+                    {isExpanded ? event.description : `${event.description.slice(0, 50)}...`}
+                  </p>
+                  {event.description.length > 50 && (
+                    <button
+                      onClick={() => handleSeeMore(event.id)}
+                      className="text-blue-600 underline mt-2"
+                    >
+                      {isExpanded ? 'See Less' : 'See More'}
+                    </button>
+                  )}
                   {event.isPaidEvent && (
                     <p className="mt-2 text-green-600">Paid Event</p>
                   )}
@@ -348,17 +575,14 @@ export default function Events() {
                   )}
                 </CardContent>
                 <CardFooter className="justify-center gap-2">
-                  {isUpcomingEvent && (
-                    <Button
-                      onClick={() => handleEdit(event)}
-                      size="sm"
-                      variant="outline"
-                      className="bg-[#047857] text-white"
-                    >
-                      <FiEdit className="mr-2" />
-                      Edit
-                    </Button>
-                  )}
+                  <Button
+                    onClick={() => handleEdit(event)}
+                    size="sm"
+                    variant="outline"
+                    className="bg-[#047857] text-white"
+                  >
+                    Edit
+                  </Button>
                   <div>
                     <Button
                       onClick={() => handleDeleteClick(event.id)}
@@ -367,7 +591,6 @@ export default function Events() {
                     >
                       <FiTrash2 className="text-[#047857]" />
                     </Button>
-
                     {isPopupOpen && (
                       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
                         <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
@@ -402,6 +625,7 @@ export default function Events() {
         </div>
 
 
+
         {/* Side form */}
         {showForm && (
           <div
@@ -414,7 +638,8 @@ export default function Events() {
                 <FiX />
               </Button>
             </div>
-            <form onSubmit={handleSubmit}>
+           
+            <form  onSubmit={handleSubmit}  >
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">Title</label>
                 <input
@@ -503,15 +728,29 @@ export default function Events() {
                         <span className="font-semibold">Click to upload</span> or drag and drop
                       </p>
                     </div>
-                    <input
-                      type="file"
-                      id="events"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
+                    <div>
+    <input
+      type="file"
+      id="events"
+      accept="image/*"
+      onChange={handleFileUpload}
+      className="hidden"
+    />
+    
+    {/* Image preview */}
+   
+  </div>
                   </label>
                 </div>
+                {newEvent.banner && (
+      <Image
+        src={newEvent.banner}
+        alt="Event Banner Preview"
+        width={1200}
+        height={1200}
+        className="w-32 h-32 mt-2 p-2 object-cover mb-2"
+      />
+    )}
                 {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
               </div>
               <div className="mb-4 flex items-center justify-between">
